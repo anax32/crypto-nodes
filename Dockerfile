@@ -5,6 +5,7 @@ ARG BITCOIN_CORE_TAG=v0.18.0
 
 RUN apt-get update && \
     apt-get install -y \
+              wget unzip \
               build-essential \
               autoconf \
               libssl-dev \
@@ -19,26 +20,34 @@ RUN apt-get update && \
               pkg-config \
               libevent-dev \
               git \
-              bsdmainutils
+              bsdmainutils \
+              libzmq3-dev \
+              tree
 
-RUN mkdir /home/bitc/
-RUN git clone \
-      -b $BITCOIN_CORE_TAG \
-      https://github.com/bitcoin/bitcoin.git \
-      /home/bitc/bitcoin
+RUN mkdir /home/btc/
+#RUN git clone \
+#      -b $BITCOIN_CORE_TAG \
+#      https://github.com/bitcoin/bitcoin.git \
+#      /home/btc/bitcoin
+#
+WORKDIR /home/btc/
+#RUN ./autogen.sh
+#RUN ./configure \
+#      CPPFLAGS="-I/usr/local/BerkeleyDB.4.8/include -O2" \
+#      LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib" \
+#      --without-gui
+#
+#RUN make && make install
 
-WORKDIR /home/bitc/bitcoin
-RUN ./autogen.sh
-RUN ./configure \
-      CPPFLAGS="-I/usr/local/BerkeleyDB.4.8/include -O2" \
-      LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib" \
-      --disable-wallet
-
-RUN make && make install
+ADD https://bitcoin.org/bin/bitcoin-core-0.18.0/bitcoin-0.18.0-x86_64-linux-gnu.tar.gz .
+RUN tar -xvf bitcoin-0.18.0-x86_64-linux-gnu.tar.gz && \
+    cp /home/btc/bitcoin-0.18.0/bin/bitcoin-cli /usr/local/bin && \
+    cp /home/btc/bitcoin-0.18.0/bin/bitcoind /usr/local/bin && \
+    rm -drf bitcoin-0.18.0
 
 # add the default bitcoin.conf
 ADD https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf \
-    /home/bitc/bitcoin.conf
+    /home/btc/bitcoin.conf
 
 # build the deployable
 FROM debian:buster-slim
@@ -66,7 +75,7 @@ RUN mkdir -p /block-data
 # for a generator, see:
 #   https://jlopp.github.io/bitcoin-core-config-generator/
 RUN  mkdir -p /config
-COPY --from=build-env /home/bitc/bitcoin.conf /config/bitcoin.conf
+COPY --from=build-env /home/btc/bitcoin.conf /config/bitcoin.conf
 
 # default run command
 CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf"]
