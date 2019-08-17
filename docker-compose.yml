@@ -1,0 +1,11 @@
+version: "3"
+services:
+  log:
+    build: ./unctxlog
+    ports:
+     - "28332:28332"
+  bitcoind:
+    build: ./from-repo
+    ports:
+     - "28332:28332"
+     - "8333:8333"

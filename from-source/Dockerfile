@@ -25,25 +25,25 @@ RUN apt-get update && \
               tree
 
 RUN mkdir /home/btc/
-#RUN git clone \
-#      -b $BITCOIN_CORE_TAG \
-#      https://github.com/bitcoin/bitcoin.git \
-#      /home/btc/bitcoin
-#
-WORKDIR /home/btc/
-#RUN ./autogen.sh
-#RUN ./configure \
-#      CPPFLAGS="-I/usr/local/BerkeleyDB.4.8/include -O2" \
-#      LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib" \
-#      --without-gui
-#
-#RUN make && make install
+RUN git clone \
+      -b $BITCOIN_CORE_TAG \
+      https://github.com/bitcoin/bitcoin.git \
+      /home/btc/bitcoin
 
-ADD https://bitcoin.org/bin/bitcoin-core-0.18.0/bitcoin-0.18.0-x86_64-linux-gnu.tar.gz .
-RUN tar -xvf bitcoin-0.18.0-x86_64-linux-gnu.tar.gz && \
-    cp /home/btc/bitcoin-0.18.0/bin/bitcoin-cli /usr/local/bin && \
-    cp /home/btc/bitcoin-0.18.0/bin/bitcoind /usr/local/bin && \
-    rm -drf bitcoin-0.18.0
+WORKDIR /home/btc/bitcoin/
+RUN ./autogen.sh
+RUN ./configure \
+      CPPFLAGS="-I/usr/local/BerkeleyDB.4.8/include -O2" \
+      LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib" \
+      --without-gui
+
+RUN make && make install
+
+#ADD https://bitcoin.org/bin/bitcoin-core-0.18.0/bitcoin-0.18.0-x86_64-linux-gnu.tar.gz .
+#RUN tar -xvf bitcoin-0.18.0-x86_64-linux-gnu.tar.gz && \
+#    cp /home/btc/bitcoin-0.18.0/bin/bitcoin-cli /usr/local/bin && \
+#    cp /home/btc/bitcoin-0.18.0/bin/bitcoind /usr/local/bin && \
+#    rm -drf bitcoin-0.18.0
 
 # add the default bitcoin.conf
 ADD https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf \
@@ -74,8 +74,15 @@ RUN mkdir -p /block-data
 # bitcoin.conf can be mounted over
 # for a generator, see:
 #   https://jlopp.github.io/bitcoin-core-config-generator/
-RUN  mkdir -p /config
-COPY --from=build-env /home/btc/bitcoin.conf /config/bitcoin.conf
+#RUN  mkdir -p /config
+#COPY --from=build-env /home/btc/bitcoin.conf /config/bitcoin.conf
+
+# install from the bitcoin repo
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    apt-add-repository ppa:bitcoin/bitcoin && \
+    apt-get update && \
+    apt-get install -y bitcoind
 
 # default run command
 CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf"]
