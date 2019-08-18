@@ -7,7 +7,9 @@ import binascii
 import zmq
 import struct
 
-port = 23882
+ip = "127.0.0.1"
+#ip = "172.17.0.2"
+port = 28332
 
 print("A")
 zmqContext = zmq.Context()
@@ -21,31 +23,34 @@ zmqSubSocket.setsockopt(zmq.SUBSCRIBE, b"rawtx")
 
 print("C %s" % str(zmqSubSocket))
 
-zmqSubSocket.connect("tcp://127.0.0.1:%i" % port)
+zmqSubSocket.connect("tcp://%s:%i" % (ip, port))
 
 print("D %s" % str(zmqSubSocket))
 
 try:
     while True:
-        print("waiting")
         msg = zmqSubSocket.recv_multipart()
-        print("got")
+#        msg = zmqSubSocket.recv()
+#        print(msg)
         topic = str(msg[0])
         body = msg[1]
+
+        print("topic: '%s', body: '%s'" % (str(topic), str(body)))
         sequence = "Unknown";
         if len(msg[-1]) == 4:
           msgSequence = struct.unpack('<I', msg[-1])[-1]
           sequence = str(msgSequence)
-        if topic == "hashblock":
+          print("unknown")
+        if topic == b"hashblock":
             print ('- HASH BLOCK ('+sequence+') -')
             print (binascii.hexlify(body))
-        elif topic == "hashtx":
+        elif topic == b"hashtx":
             print ('- HASH TX  ('+sequence+') -')
             print (binascii.hexlify(body))
-        elif topic == "rawblock":
+        elif topic == b"rawblock":
             print ('- RAW BLOCK HEADER ('+sequence+') -')
             print (binascii.hexlify(body[:80]))
-        elif topic == "rawtx":
+        elif topic == b"rawtx":
             print ('- RAW TX ('+sequence+') -')
             print (binascii.hexlify(body))
 

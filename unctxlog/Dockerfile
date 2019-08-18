@@ -11,4 +11,7 @@ RUN pip3 install pyzmq
 COPY ./zmq_c.py /usr/local/bin/zmq_c.py
 
 # default run command
-CMD ["python3", "/usr/local/bin/zmq_c.py"]
+
+ENV PYTHONUNBUFFERED 1
+
+CMD ["python3", "-u", "/usr/local/bin/zmq_c.py"]
