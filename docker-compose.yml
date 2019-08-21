@@ -1,11 +1,64 @@
 version: "3"
+
 services:
-  log:
-    build: ./unctxlog
-    ports:
-     - "28332:28332"
+  # BITCOIND FULL NODE
   bitcoind:
-    build: ./from-repo
+    build:
+      ./from-repo
+
+    volumes:
+      - /home/ed/btc/data/btc/blks:/block-data
+      - /home/ed/btc/data/btc/config:/config
+
     ports:
-     - "28332:28332"
-     - "8333:8333"
+     - 28332:28332
+     - 8333:8333
+
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
+
+    #NB: this command does chown as a hack to write on the
+    #    mapped volumes, would be better to use docker volumes
+    #    but how to map a local dir to a docker volume?
+    command:
+      - "/bin/bash"
+      - -c
+      - |
+          chown root:root /block-data && \
+          chown root:root /config && \
+          bitcoind \
+            -datadir=/block-data \
+            -conf=/config/bitcoin.conf \
+            -dbcache=20 \
+            -maxsigcachesize=4 \
+            -maxconnections=8 \
+            -reindex
+
+
+  # UNCONFIRMED TRANSACTION LOGGER
+  unc:
+    build:
+      ./unctxlog
+
+    volumes:
+      - /home/ed/btc/data/btc/unc:/txs
+
+    environment:
+      RAWTX_SOURCE_ADDR: tcp://bitcoind:28332
+      OUTPUT_FILE: "/txs/unctxs"
+      RAWTX_COUNT_PER_FILE: 1000000
+      RAWTX_COMPRESSED_LOGS: 1
+
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
+
+    command:
+      - "/bin/bash"
+      - -c
+      - |
+          chown root:root /txs && \
+          python3 -u /usr/local/bin/zmq_c.py
