@@ -7,8 +7,8 @@ services:
       ./from-repo
 
     volumes:
-      - /home/ed/btc/data/btc/blks:/block-data
-      - /home/ed/btc/data/btc/config:/config
+      - ../data/btc/blks:/block-data
+      - ../data/btc/config:/config
 
     ports:
      - 28332:28332
@@ -31,9 +31,8 @@ services:
           bitcoind \
             -datadir=/block-data \
             -conf=/config/bitcoin.conf \
-            -dbcache=20 \
-            -maxsigcachesize=4 \
-            -maxconnections=8 \
+            -dbcache=200 \
+            -txindex=1 \
             -reindex
 
 
@@ -43,7 +42,7 @@ services:
       ./unctxlog
 
     volumes:
-      - /home/ed/btc/data/btc/unc:/txs
+      - ../data/btc/unc:/txs
 
     environment:
       RAWTX_SOURCE_ADDR: tcp://bitcoind:28332
@@ -62,3 +61,17 @@ services:
       - |
           chown root:root /txs && \
           python3 -u /usr/local/bin/zmq_c.py
+
+  txdb:
+    image: mysql:5.7
+    ports:
+      - "33061:3306"
+    command: --init-file /data/application/create-tables.sql
+    volumes:
+      - ./init.sql:/data/application/create-tables.sql
+    environment:
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: r00tp455
+      MYSQL_DATABASE: transactions
+      MYSQL_USER: txuser
+      MYSQL_PASSWORD: txuserp455

@@ -12,7 +12,7 @@ RUN apt-get update && \
 RUN mkdir -p /block-data
 
 # default run command
-CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf", "-zmqpubrawtx=tcp://127.0.0.1:23882", "-rpcuser=ed", "-rpcpassword=ed"]
+CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf", "-zmqpubrawtx=tcp://127.0.0.1:23882"]
 
 # expose the port to peers
 EXPOSE 8333

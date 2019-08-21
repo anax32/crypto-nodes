@@ -71,7 +71,7 @@ try:
     msg = socket.recv_multipart()
     logger.debug("got body (len: %i (%i, %i))" % (len(msg), len(msg[0]), len(msg[1])))
     body = msg[1]
-    tx_file.write(binascii.hexlify(body))
+    tx_file.write(binascii.hexlify(body) + b"\n")
 
     if rotate_transaction_file(tx_idx) is True:
       logger.info("swapping transaction file (%i transactions)" % tx_idx)
