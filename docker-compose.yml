@@ -1,6 +1,33 @@
 version: "3"
 
 services:
+  # MYSQL DB FOR TRANSACTIONS
+  txdb:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    expose:
+      - "3306"
+    command: --init-file /usr/local/bin/create-tables.sql
+    volumes:
+      - ./txdb/scripts/create-tables.sql:/usr/local/bin/create-tables.sql
+      - ../data/btc/mysqldb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: test
+      MYSQL_DATABASE: transactions
+      MYSQL_USER: ttest
+      MYSQL_PASSWORD: ttest
+
+  txins:
+    build: ./txins
+
+    environment:
+      MYSQL_HOST: txdb
+      MYSQL_DBNAME: transactions
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test
+
   # BITCOIND FULL NODE
   bitcoind:
     build:
@@ -37,9 +64,9 @@ services:
 
 
   # UNCONFIRMED TRANSACTION LOGGER
-  unc:
+  txlog:
     build:
-      ./unctxlog
+      ./txlog
 
     volumes:
       - ../data/btc/unc:/txs
@@ -61,17 +88,3 @@ services:
       - |
           chown root:root /txs && \
           python3 -u /usr/local/bin/zmq_c.py
-
-  txdb:
-    image: mysql:5.7
-    ports:
-      - "33061:3306"
-    command: --init-file /data/application/create-tables.sql
-    volumes:
-      - ./init.sql:/data/application/create-tables.sql
-    environment:
-      MYSQL_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: r00tp455
-      MYSQL_DATABASE: transactions
-      MYSQL_USER: txuser
-      MYSQL_PASSWORD: txuserp455
