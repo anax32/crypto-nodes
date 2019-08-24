@@ -15,5 +15,5 @@ RUN mkdir -p /block-data
 CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf", "-zmqpubrawtx=tcp://127.0.0.1:23882"]
 
 # expose the port to peers
-EXPOSE 8333
+EXPOSE 8332
 EXPOSE 23882

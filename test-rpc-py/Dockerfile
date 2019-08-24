@@ -3,13 +3,12 @@ FROM python:3.7-slim
 
 RUN pip3 install --no-cache-dir \
        pyzmq \
-       pymongo \
        requests
 
-COPY ./zmq_c.py /usr/local/bin/zmq_c.py
+COPY ./getchaininfo.py /usr/local/bin/getchaininfo.py
 
 # default run command
 
 ENV PYTHONUNBUFFERED 1
 
-CMD ["python3", "-u", "/usr/local/bin/zmq_c.py"]
+CMD ["python3", "-u", "/usr/local/bin/getchaininfo.py"]

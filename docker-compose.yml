@@ -1,45 +1,42 @@
 version: "3"
 
 services:
-  # MYSQL DB FOR TRANSACTIONS
-  txdb:
-    image: mysql:5.7
-    ports:
-      - "3306:3306"
-    expose:
-      - "3306"
-    command: --init-file /usr/local/bin/create-tables.sql
-    volumes:
-      - ./txdb/scripts/create-tables.sql:/usr/local/bin/create-tables.sql
-      - ../data/btc/mysqldb:/var/lib/mysql
+  test-rpc-py:
+    build: ./test-rpc-py
+    networks: [btc-logger-network]
+    command:
+      - "/bin/bash"
+      - "-c"
+      - "hostname -i && python -u /usr/local/bin/getchaininfo.py"
     environment:
-      MYSQL_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: test
-      MYSQL_DATABASE: transactions
-      MYSQL_USER: ttest
-      MYSQL_PASSWORD: ttest
+      RPC_HOST: bitcoind
+      RPC_PORT: $BITCOIND_RPC_PORT
+      RPC_USER: $BITCOIND_RPC_USER
+      RPC_PASS: $BITCOIND_RPC_PASS
 
-  txins:
-    build: ./txins
-
-    environment:
-      MYSQL_HOST: txdb
-      MYSQL_DBNAME: transactions
-      MYSQL_USER: root
-      MYSQL_PASSWORD: test
+  test-rpc-curl:
+    image: pstauffer/curl
+    networks: [btc-logger-network]
+    command:
+     - "/bin/sh"
+     - "-c"
+     - |
+         hostname -i && \
+         curl \
+           -v \
+           -u $BITCOIND_RPC_USER:$BITCOIND_RPC_PASS \
+           -d '{"jsonrpc": "2.0", "id":"curltest", "method": "getblockchaininfo", "params": [] }' \
+           -H 'content-type: text/plain;' \
+           http://bitcoind:$BITCOIND_RPC_PORT/
 
   # BITCOIND FULL NODE
   bitcoind:
-    build:
-      ./from-repo
-
-    volumes:
-      - ../data/btc/blks:/block-data
-      - ../data/btc/config:/config
-
+    build: ./from-repo
+    volumes: [../data/btc/blks:/block-data]
+    networks: [btc-logger-network]
     ports:
      - 28332:28332
-     - 8333:8333
+     - $BITCOIND_RPC_PORT:$BITCOIND_RPC_PORT
 
     logging:
       options:
@@ -54,14 +51,23 @@ services:
       - -c
       - |
           chown root:root /block-data && \
-          chown root:root /config && \
           bitcoind \
             -datadir=/block-data \
-            -conf=/config/bitcoin.conf \
             -dbcache=200 \
             -txindex=1 \
-            -reindex
+            -reindex \
+            -zmqpubrawtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+            -zmqpubhashblock=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+            -server \
+            -rpcuser=$BITCOIND_RPC_USER \
+            -rpcpassword=$BITCOIND_RPC_PASS \
+            -rpcallowip=$BTC_NETMASK \
+            -rpcbind=0.0.0.0:$BITCOIND_RPC_PORT \
+            -rpcport=$BITCOIND_RPC_PORT
 
+#            -debug=rpc \
+#            -debug=net \
+#            -debug=http
 
   # UNCONFIRMED TRANSACTION LOGGER
   txlog:
@@ -72,10 +78,18 @@ services:
       - ../data/btc/unc:/txs
 
     environment:
-      RAWTX_SOURCE_ADDR: tcp://bitcoind:28332
+      RAWTX_SOURCE_ADDR: tcp://bitcoind:$BITCOIND_ZMQ_PORT
       OUTPUT_FILE: "/txs/unctxs"
       RAWTX_COUNT_PER_FILE: 1000000
       RAWTX_COMPRESSED_LOGS: 1
+      MONGODB_HOST: mongo
+      MONGODB_PORT: 27017
+      MONGODB_USER: root
+      MONGODB_PASS: test
+      BITCOIND_HOST: bitcoind
+      BITCOIND_PORT: $BITCOIND_RPC_PORT
+      BITCOIND_RPC_USER: $BITCOIND_RPC_USER
+      BITCOIND_RPC_PASSWORD: $BITCOIND_RPC_PASS
 
     logging:
       options:
@@ -88,3 +102,17 @@ services:
       - |
           chown root:root /txs && \
           python3 -u /usr/local/bin/zmq_c.py
+
+  # MONGODB FOR TRANSACTIONS
+  mongo:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: test
+
+networks:
+  btc-logger-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: $BTC_LOGGER_NETMASK
