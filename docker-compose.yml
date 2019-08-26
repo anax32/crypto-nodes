@@ -15,7 +15,7 @@ services:
     build: ./from-repo
     networks: [btc-logger-network]
     volumes: 
-      - ../data/btc/blks:/block-data
+      - $DATA_DIR/blks:/block-data
     ports:
      - $BITCOIND_ZMQ_PORT:$BITCOIND_ZMQ_PORT
      - $BITCOIND_RPC_PORT:$BITCOIND_RPC_PORT
@@ -58,7 +58,7 @@ services:
     build: ./txlog
     networks: [btc-logger-network]
     volumes:
-      - ../data/btc/unc:/txs
+      - $DATA_DIR/unc:/txs
     environment:
       RAWTX_SOURCE_ADDR: tcp://bitcoind:$BITCOIND_ZMQ_PORT
       MONGODB_HOST: mongo-storage
@@ -94,7 +94,7 @@ services:
     image: mongo
     networks: [btc-logger-network]
     volumes:
-      - ../data/btc/mdb:/data/db
+      - $DATA_DIR/mdb:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: $MONGODB_USER
       MONGO_INITDB_ROOT_PASSWORD: $MONGODB_PASSWORD
@@ -106,13 +106,15 @@ services:
   # MONGO EXPORT SERVICE
   #   will export the mongodb data everytime it is
   #   brought up (even at startup...)
+  # output is piped through gzip; takes longer but
+  # is 4x smaller
   # FIXME: not sure we need to define the env vars
   #        they are just passed in anyway?
   mongo-export:
     image: mongo
     networks: [btc-logger-network]
     volumes:
-      - ../data/btc/mdb-x:/data/db
+      - $DATA_DIR/mdb-x:/data/db
     environment:
       MONGODB_USER: $MONGODB_USER
       MONGODB_PASSWORD: $MONGODB_PASSWORD
@@ -131,7 +133,7 @@ services:
             --db $MONGODB_DATABASE \
             --collection $MONGODB_COLLECTION \
             --archive \
-          > /data/db/export.mongodbo
+          | gzip > /data/db/export.mongodbo.gz
 
     depends_on:
       - mongo-storage
