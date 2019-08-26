@@ -1,0 +1,23 @@
+A bunch of services which log bitcoin transaction data to a mongodb
+
+services
+--------
++ bitcoind - bitcoin full node which recieves the data. It has to be
+             set to reindex on each restart, so restarts will take some
+             time. The ZMQ and RPC ports are exposed, RPC is restricted
+             to the subnet mask setup by the docker-compose system.
+             ZMQ is exposed by 0.0.0.0.
++ txlog - the transaaction logger. This connects to the ZMQ port on
+          bitcoind (the logger must be on the same subnet for the DNS
+          lookup to work). Once bitcoind is up and running a stream
+          of transactions will pass through ZMQ into the logger; the
+          transactions are raw hashes, we decode them using the RPC
+          methods of bitcoind ("decoderawtransaction"). The decoded
+          data is pushed into the mongo database.
++ mongo-storage - database to hold the transaction data
++ mongo-export - service to export the mongodb contents. This service
+                 will auto-start then shutdown; to export the data just
+                 restart the service ("docker-compose up mongo-export")
++ test-rpc-curl - service to test the bitcoind rpc server with curl
++ test-rpc-py - service to test the bitcoind rpc server from python
+
