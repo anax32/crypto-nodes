@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  mongo-storage-static:
+    image: mongo
+    volumes:
+      - ./data/:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: test
+    expose:
+      - 27017
+
+  read-data:
+    build: ./graph-vis
+    volumes:
+      - ./images:/output-images
+      - ./graph-vis:/scripts
+    environment:
+      MONGODB_HOST: mongo-storage-static
+      MONGODB_PORT: 27017
+      MONGODB_USER: root
+      MONGODB_PASS: test
+      MONGODB_AUTHDB: admin
+      MONGODB_DATABASE: btc-txs
+      MONGODB_COLLECTION: txs
+    command:
+      - "/bin/bash"
+      - "-c"
+      - "python3 /scripts/make-graph.py"
+    depends_on:
+      - mongo-storage-static

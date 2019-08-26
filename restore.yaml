@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+  mongo-storage-static:
+    image: mongo
+    volumes:
+      - ./data/:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: test
+    expose:
+      - 27017
+
+  mongo-restore-backup:
+    image: mongo
+    volumes:
+      - ./backup/:/backup 
+    command:
+      - "/bin/bash"
+      - "-c"
+      - |
+          sleep 10 && \
+          gzip \
+           -c \
+           -d \
+           /backup/tx-db-201510-20p.gz | \
+          mongorestore \
+           --host mongo-storage-static \
+           --port 27017 \
+           --username root \
+           --password test \
+           --archive
+    depends_on:
+      - mongo-storage-static
+
+#           --authenticationDatabase admin \
+
