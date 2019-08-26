@@ -1,3 +1,5 @@
+#fullnode.yaml
+
 A bunch of services which log bitcoin transaction data to a mongodb
 
 services
@@ -21,3 +23,9 @@ services
 + test-rpc-curl - service to test the bitcoind rpc server with curl
 + test-rpc-py - service to test the bitcoind rpc server from python
 
+# restore.yaml
+create a mongodb database and restore a backup file into it so we
+have a test dataset with which to work
+
+# process.yaml
+process the transaction data in a mongodb database to produce graphs
