@@ -4,17 +4,17 @@ services:
   mongo-storage-static:
     image: mongo
     volumes:
-      - ./data/:/data/db
+      - $DATA_DIR/data/static-store:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: test
+      MONGO_INITDB_ROOT_USERNAME: $MONGODB_USER
+      MONGO_INITDB_ROOT_PASSWORD: $MONGODB_PASSWORD
     expose:
       - 27017
 
   mongo-restore-backup:
     image: mongo
     volumes:
-      - ./backup/:/backup 
+      - $DATA_DIR/backup/:/backup 
     command:
       - "/bin/bash"
       - "-c"
@@ -27,8 +27,8 @@ services:
           mongorestore \
            --host mongo-storage-static \
            --port 27017 \
-           --username root \
-           --password test \
+           --username $MONGODB_USER \
+           --password $MONGODB_PASSWORD \
            --archive
     depends_on:
       - mongo-storage-static

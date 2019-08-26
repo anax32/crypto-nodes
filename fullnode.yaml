@@ -114,7 +114,7 @@ services:
     image: mongo
     networks: [btc-logger-network]
     volumes:
-      - $DATA_DIR/mdb-x:/data/db
+      - $DATA_DIR/backup:/data/db
     environment:
       MONGODB_USER: $MONGODB_USER
       MONGODB_PASSWORD: $MONGODB_PASSWORD
@@ -132,8 +132,9 @@ services:
             --authenticationDatabase admin \
             --db $MONGODB_DATABASE \
             --collection $MONGODB_COLLECTION \
+            --gzip \
             --archive \
-          | gzip > /data/db/export.mongodbo.gz
+           > /data/db/export.mongodbo.gz
 
     depends_on:
       - mongo-storage
