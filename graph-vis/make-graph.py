@@ -54,8 +54,11 @@ proj_w_addr={"txid": 1,
 G = nx.Graph()
 
 # add txs to graph
+if node_count is None or node_count < 1:
+  node_count = txs.estimated_document_count()
+
 for record in txs.find(query, proj).limit(node_count):
-  pprint(record)
+  #pprint(record)
   G.add_node(record["txid"])
 
   for intx in record["vin"]:
@@ -63,20 +66,21 @@ for record in txs.find(query, proj).limit(node_count):
 
     G.add_edge(record["txid"], intx["txid"])
 
-print("number of nodes: %i" % G.number_of_nodes())
-print("number of edges: %i" % G.number_of_edges())
+logger.info("number of nodes: %i" % G.number_of_nodes())
+logger.info("number of edges: %i" % G.number_of_edges())
 
 
 # draw the graph
 import matplotlib.pyplot as plt
+plt.figure(figsize=(15,15))
 
 logger.info("computing layout...")
 # https://networkx.github.io/documentation/stable/reference/generated/networkx.drawing.nx_agraph.graphviz_layout.html
 pos = nx.spring_layout(G)
 #pos = nx.planar_layout(G)
 
-logger.info("drawing...")
-nx.draw(G, pos=pos, node_size=1)
-
-logger.info("saving graph image")
-plt.savefig("/output-images/graph.png", dpi=800)
+# https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html?highlight=node_size
+nx.draw(G, pos=pos, node_size=1, alpha=0.5)
+output_filename="/output-images/graph.png"
+logger.debug("saving to '%s'" % output_filename)
+plt.savefig(output_filename, dpi=100)
