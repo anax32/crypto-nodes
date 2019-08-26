@@ -6,7 +6,8 @@ RUN apt-get update && \
     apt-get install -y software-properties-common && \
     apt-add-repository ppa:bitcoin/bitcoin && \
     apt-get update && \
-    apt-get install -y bitcoind
+    apt-get install -y bitcoind && \
+    rm -rf /var/lib/apt/lists/*
 
 # by default we expect the rpc auth cookie in this dir
 RUN mkdir -p /block-data

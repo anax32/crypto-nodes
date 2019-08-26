@@ -1,41 +1,23 @@
 version: "3"
 
+networks:
+  # network to contain the services
+  # NB: the mask is important for bitcoind permissions
+  btc-logger-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: $BTC_NETMASK
+
 services:
-  test-rpc-py:
-    build: ./test-rpc-py
-    networks: [btc-logger-network]
-    command:
-      - "/bin/bash"
-      - "-c"
-      - "hostname -i && python -u /usr/local/bin/getchaininfo.py"
-    environment:
-      RPC_HOST: bitcoind
-      RPC_PORT: $BITCOIND_RPC_PORT
-      RPC_USER: $BITCOIND_RPC_USER
-      RPC_PASS: $BITCOIND_RPC_PASS
-
-  test-rpc-curl:
-    image: pstauffer/curl
-    networks: [btc-logger-network]
-    command:
-     - "/bin/sh"
-     - "-c"
-     - |
-         hostname -i && \
-         curl \
-           -v \
-           -u $BITCOIND_RPC_USER:$BITCOIND_RPC_PASS \
-           -d '{"jsonrpc": "2.0", "id":"curltest", "method": "getblockchaininfo", "params": [] }' \
-           -H 'content-type: text/plain;' \
-           http://bitcoind:$BITCOIND_RPC_PORT/
-
   # BITCOIND FULL NODE
   bitcoind:
     build: ./from-repo
-    volumes: [../data/btc/blks:/block-data]
     networks: [btc-logger-network]
+    volumes: 
+      - ../data/btc/blks:/block-data
     ports:
-     - 28332:28332
+     - $BITCOIND_ZMQ_PORT:$BITCOIND_ZMQ_PORT
      - $BITCOIND_RPC_PORT:$BITCOIND_RPC_PORT
 
     logging:
@@ -58,6 +40,7 @@ services:
             -reindex \
             -zmqpubrawtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
             -zmqpubhashblock=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+            -zmqpubhashtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
             -server \
             -rpcuser=$BITCOIND_RPC_USER \
             -rpcpassword=$BITCOIND_RPC_PASS \
@@ -66,26 +49,24 @@ services:
             -rpcport=$BITCOIND_RPC_PORT
 
 #            -debug=rpc \
+#            -debug=zmq \
 #            -debug=net \
 #            -debug=http
 
-  # UNCONFIRMED TRANSACTION LOGGER
+  # TRANSACTION LOGGER
   txlog:
-    build:
-      ./txlog
-
+    build: ./txlog
+    networks: [btc-logger-network]
     volumes:
       - ../data/btc/unc:/txs
-
     environment:
       RAWTX_SOURCE_ADDR: tcp://bitcoind:$BITCOIND_ZMQ_PORT
-      OUTPUT_FILE: "/txs/unctxs"
-      RAWTX_COUNT_PER_FILE: 1000000
-      RAWTX_COMPRESSED_LOGS: 1
-      MONGODB_HOST: mongo
+      MONGODB_HOST: mongo-storage
       MONGODB_PORT: 27017
-      MONGODB_USER: root
-      MONGODB_PASS: test
+      MONGODB_USER: $MONGODB_USER
+      MONGODB_PASSWORD: $MONGODB_PASSWORD
+      MONGODB_DATABASE: $MONGODB_DATABASE
+      MONGODB_COLLECTION: $MONGODB_COLLECTION
       BITCOIND_HOST: bitcoind
       BITCOIND_PORT: $BITCOIND_RPC_PORT
       BITCOIND_RPC_USER: $BITCOIND_RPC_USER
@@ -96,23 +77,105 @@ services:
         max-file: "5"
         max-size: "500k"
 
+    depends_on:
+      - bitcoind
+      - mongo-storage
+
     command:
       - "/bin/bash"
       - -c
       - |
           chown root:root /txs && \
+          sleep 10 && \
           python3 -u /usr/local/bin/zmq_c.py
 
   # MONGODB FOR TRANSACTIONS
-  mongo:
+  mongo-storage:
     image: mongo
+    networks: [btc-logger-network]
+    volumes:
+      - ../data/btc/mdb:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: test
+      MONGO_INITDB_ROOT_USERNAME: $MONGODB_USER
+      MONGO_INITDB_ROOT_PASSWORD: $MONGODB_PASSWORD
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
 
-networks:
-  btc-logger-network:
-    ipam:
-      driver: default
-      config:
-        - subnet: $BTC_LOGGER_NETMASK
+  # MONGO EXPORT SERVICE
+  #   will export the mongodb data everytime it is
+  #   brought up (even at startup...)
+  # FIXME: not sure we need to define the env vars
+  #        they are just passed in anyway?
+  mongo-export:
+    image: mongo
+    networks: [btc-logger-network]
+    volumes:
+      - ../data/btc/mdb-x:/data/db
+    environment:
+      MONGODB_USER: $MONGODB_USER
+      MONGODB_PASSWORD: $MONGODB_PASSWORD
+      MONGODB_DATABASE: $MONGODB_DATABASE
+      MONGODB_COLLECTION: $MONGODB_COLLECTION
+    command:
+      - "/bin/sh"
+      - "-c"
+      - |
+          exec mongodump \
+            --host mongo-storage \
+            --port 27017 \
+            --username $MONGODB_USER \
+            --password $MONGODB_PASSWORD \
+            --authenticationDatabase admin \
+            --db $MONGODB_DATABASE \
+            --collection $MONGODB_COLLECTION \
+            --archive \
+          > /data/db/export.mongodbo
+
+    depends_on:
+      - mongo-storage
+
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
+
+  # RPC TESTS
+  # test remote producecalls to bitcoind from a python script
+  test-rpc-py:
+    build: ./test-rpc-py
+    networks: [btc-logger-network]
+    command:
+      - "/bin/bash"
+      - "-c"
+      - "hostname -i && python -u /usr/local/bin/getchaininfo.py"
+    environment:
+      RPC_HOST: bitcoind
+      RPC_PORT: $BITCOIND_RPC_PORT
+      RPC_USER: $BITCOIND_RPC_USER
+      RPC_PASS: $BITCOIND_RPC_PASS
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
+
+  # test rpc to bitcoind from curl
+  test-rpc-curl:
+    build: ./test-rpc-curl
+    networks: [btc-logger-network]
+    command:
+     - "/bin/sh"
+     - "-c"
+     - |
+         hostname -i && \
+         curl \
+           -v \
+           -u $BITCOIND_RPC_USER:$BITCOIND_RPC_PASS \
+           -d '{"jsonrpc": "2.0", "id":"curltest", "method": "getblockchaininfo", "params": [] }' \
+           -H 'content-type: text/plain;' \
+           http://bitcoind:$BITCOIND_RPC_PORT/
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
