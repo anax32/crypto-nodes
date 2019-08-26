@@ -23,7 +23,7 @@ services:
           gzip \
            -c \
            -d \
-           /backup/tx-db-201510-20p.gz | \
+           /backup/export.mongodbo.gz | \
           mongorestore \
            --host mongo-storage-static \
            --port 27017 \
@@ -33,5 +33,25 @@ services:
     depends_on:
       - mongo-storage-static
 
-#           --authenticationDatabase admin \
-
+  # this will run over whatever data has been restored,
+  # if the restore is long running, just up this service
+  # later manually
+  graph-vis:
+    build: ./graph-vis
+    volumes:
+      - $DATA_DIR/images:/output-images
+    environment:
+      MONGODB_HOST: mongo-storage-static
+      MONGODB_PORT: 27017
+      MONGODB_USER: $MONGODB_USER
+      MONGODB_PASS: $MONGODB_PASSWORD
+      MONGODB_AUTHDB: admin
+      MONGODB_DATABASE: $MONGODB_DATABASE
+      MONGODB_COLLECTION: $MONGODB_COLLECTION
+    command:
+      - "/bin/bash"
+      - "-c"
+      - "sleep 20 && python3 /usr/local/bin/make-graph.py"
+    depends_on:
+      - mongo-storage-static
+      - mongo-restore-backup
