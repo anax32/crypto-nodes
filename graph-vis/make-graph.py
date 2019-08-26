@@ -25,10 +25,12 @@ uri = "mongodb://%s:%s@%s:%i" % (os.environ["MONGODB_USER"],
                                  os.environ["MONGODB_HOST"],
                                  int(os.environ["MONGODB_PORT"]))
 
-logger.info("using: '%s'" % uri)
-
 db_name = os.environ["MONGODB_DATABASE"]
 cl_name = os.environ["MONGODB_COLLECTION"]
+node_count = int(os.environ["NODE_COUNT"])
+
+logger.info("using: '%s'" % uri)
+logger.info("processing %i nodes in %s:%s" % (node_count, db_name, cl_name))
 
 # connect
 client = MongoClient(uri)
@@ -52,7 +54,7 @@ proj_w_addr={"txid": 1,
 G = nx.Graph()
 
 # add txs to graph
-for record in txs.find(query, proj).limit(250):
+for record in txs.find(query, proj).limit(node_count):
   pprint(record)
   G.add_node(record["txid"])
 
@@ -74,7 +76,7 @@ pos = nx.spring_layout(G)
 #pos = nx.planar_layout(G)
 
 logger.info("drawing...")
-nx.draw(G, pos=pos, node_size=4)
+nx.draw(G, pos=pos, node_size=1)
 
 logger.info("saving graph image")
-plt.savefig("/output-images/graph.png", dpi=600)
+plt.savefig("/output-images/graph.png", dpi=800)

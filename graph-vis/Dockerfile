@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir \
           scipy
 
 ADD read-docs-example.py /usr/local/bin/read-docs-example.py
-#ADD make-graph.py /usr/local/bin/make-graph.py
+ADD make-graph.py /usr/local/bin/make-graph.py
