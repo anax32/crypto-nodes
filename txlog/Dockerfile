@@ -1,6 +1,12 @@
 # build the deployable
 FROM python:3.7-slim
 
+# FOR RPI WE NEED TO DO SOME APT-GET
+RUN apt-get update && \
+    apt-get install -qy \
+       build-essential \
+       python3-dev
+
 # NB: we can't use alpine here because pyzmq needs compiling,
 #     there maybe a package in apk called 'py3-zmq' which is
 #     ready compiled: check?

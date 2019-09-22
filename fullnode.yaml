@@ -91,7 +91,7 @@ services:
 
   # MONGODB FOR TRANSACTIONS
   mongo-storage:
-    image: mongo
+    image: $MONGO_IMAGE_PI
     networks: [btc-logger-network]
     volumes:
       - $DATA_DIR/mdb:/data/db
@@ -111,7 +111,7 @@ services:
   # FIXME: not sure we need to define the env vars
   #        they are just passed in anyway?
   mongo-export:
-    image: mongo
+    image: $MONGO_IMAGE_PI
     networks: [btc-logger-network]
     volumes:
       - $DATA_DIR/backup:/data/db
