@@ -1,5 +1,9 @@
-#fullnode.yaml
+#.env
+environment variables for user accounts and data storage locations
+ensure $DATA_DIR is writable
+$DATA_DIR can be an external drive when mounted normally
 
+#fullnode.yaml
 A bunch of services which log bitcoin transaction data to a mongodb
 
 services
