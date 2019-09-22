@@ -1,0 +1,13 @@
+session_name: btc-monitor
+windows:
+- window_name: log window
+  layout: main-vertical
+  shell_command_before:
+    - cd ~/bitcoin-dockerfile/
+  panes:
+    - shell_command:
+        - sudo docker-compose -f fullnode.yaml logs -f
+    - shell_command:
+        - watch -n 2 -d ls -lah ../data/btc
+    - shell_command:
+        - watch -n 2 -d tree -L 2 --du -h ../data/btc
