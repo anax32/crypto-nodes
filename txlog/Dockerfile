@@ -1,25 +1,8 @@
-FROM python:3.7-alpine
-
-RUN apk update && \
-    apk add --no-cache --virtual build-dependencies \
-      g++ \
-      python3-dev \
-      zeromq-dev \
-      linux-headers \
-    && \
-    python3 -m pip install --no-cache-dir \
-      pyzmq \
-      requests \
-    && \
-    apk del build-dependencies
-
+FROM anax32/python-zmq
 
 RUN pip3 install --no-cache-dir \
-       pyzmq \
        pymongo \
        requests
-
-
 
 COPY ./zmq_c.py /usr/local/bin/zmq_c.py
 COPY ./textwriter.py /usr/local/bin/textwriter.py
