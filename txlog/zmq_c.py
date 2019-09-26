@@ -31,10 +31,14 @@ if "MONGODB_HOST" in os.environ:
   assert "BITCOIND_HOST" in os.environ
   assert "BITCOIND_PORT" in os.environ
 
-
 def get_transaction_writer():
   """create a writer function depedning on the env vars
   """
+  rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
+                   os.environ["BITCOIND_RPC_PASSWORD"],
+                   os.environ["BITCOIND_HOST"],
+                   int(os.environ["BITCOIND_PORT"]))
+
   if "MONGODB_HOST" in os.environ:
     mdb = MongoWriter(host=os.environ["MONGODB_HOST"],
                       port=int(os.environ["MONGODB_PORT"]),
@@ -42,12 +46,7 @@ def get_transaction_writer():
                       password=os.environ["MONGODB_PASSWORD"],
                       database=os.environ["MONGODB_DATABASE"],
                       collection=os.environ["MONGODB_COLLECTION"])
-    rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
-                     os.environ["BITCOIND_RPC_PASSWORD"],
-                     os.environ["BITCOIND_HOST"],
-                     int(os.environ["BITCOIND_PORT"]))
-
-    def unpack_and_write(hex_string):
+    def unpack_and_write_mdb(hex_string):
       logger.debug("decoding: '%s'" % hex_string.hex())
 
       decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
@@ -57,11 +56,27 @@ def get_transaction_writer():
       else:
         logger.warning("rpc call returned None (skipping record)")
 
-    return unpack_and_write
+    return unpack_and_write_mdb
+
 
   elif "OUTPUT_FILE" in os.environ:
-    return TextWriter(fname=os.environ["OUTPUT_FILE"],
-                      compressed="RAWTX_COMPRESSED_LOGS" in os.environ)
+    import json
+
+    txw = TextWriter(max_count=int(os.environ["RAWTX_COUNT_PER_FILE"]),
+                     fname=os.environ["OUTPUT_FILE"],
+                     compressed="RAWTX_COMPRESSED_LOGS" in os.environ)
+
+    def unpack_and_write_txt(hex_string):
+      logger.debug("decoding: '%s'" % hex_string.hex())
+      decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
+
+      if decoded_hex_string is not None:
+        txw(json.dumps(decoded_hex_string))
+      else:
+        logger.warning("rpc call returned None (skipping record)")
+
+    return unpack_and_write_txt
+
   else:
     logger.warning("No transaction writer created")
     return None

@@ -1,28 +1,33 @@
 import os
 import logging
 import gzip
+import binascii
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
-def make_transaction_filename(count):
+def make_transaction_filename(count, max_count, fname_stub):
   """consistent filename for transaction logs
   """
-  max_count = int(os.environ["RAWTX_COUNT_PER_FILE"])
-  return "%s_%08i.log" % (os.environ["OUTPUT_FILE"], count/max_count)
+  idx = count/max_count
+  logger.info("transaction batch: %i" % idx)
+  return "%s_%08i.log" % (fname_stub, idx)
 
-def rotate_transaction_file(count):
+def rotate_transaction_file(count, max_count):
   """return true if we should create a new transaction file
   """
-  return (count+1) % int(os.environ["RAWTX_COUNT_PER_FILE"]) == 0
+  return count % max_count == 0
 
-def create_transaction_file_handle(count):
+def create_transaction_file_handle(count, max_count, fname_stub):
+  filename = make_transaction_filename(count, max_count, fname_stub)
+  logger.info("writing to '%s'" % filename)
+
   if "RAWTX_COMPRESSED_LOGS" in os.environ:
-    f = gzip.open("%s.gz" % make_transaction_filename(count), "wb")
+    f = gzip.open("%s.gz" % filename, "wb")
   else:
-    f = open(make_transaction_filename(count), "wb")
+    f = open(filename, "wb")
 
   logger.info("created transaction file: '%s'" % f.name)
   return f
@@ -31,25 +36,33 @@ def create_transaction_file_handle(count):
 class TextWriter(object):
   """write transactions to a text file
   """
-  def __init__(self, fname, compressed=False):
+  def __init__(self, max_count, fname, compressed=False):
     if compressed:
       logger.info("writing compressed transactions to: '%s'" % fname)
     else:
       logger.info("writing transactions to: '%s'" % fname)
 
-    self.tx_file = create_transaction_file_handle(0)
+    self.tx_idx = 0
+    self.fname_stub = fname
+    self.max_count = max_count
+
+    self.tx_file = create_transaction_file_handle(self.tx_idx, self.max_count, self.fname_stub)
+    assert self.tx_file is not None
+
     logger.info("initial logfile created at: '%s'" % self.tx_file.name)
 
-  def __call__(self, hex_string):
-    self.tx_file.write(binascii.hexlify(body) + b"\n")
+  def __call__(self, tx_string):
+    self.tx_file.write((tx_string + "\n").encode())
+    self.tx_idx += 1
+    logger.debug("logging transaction %i" % self.tx_idx)
 
-    if rotate_transaction_file(tx_idx) is True:
-      logger.info("swapping transaction file (%i transactions)" % tx_idx)
-      logger.info("closing transaction file: '%s'" % tx_file.name)
+    if rotate_transaction_file(self.tx_idx, self.max_count) is True:
+      logger.info("swapping transaction file (%i transactions)" % self.tx_idx)
+      logger.info("closing transaction file: '%s'" % self.tx_file.name)
       self.tx_file.close()
 
-      self.tx_file = create_transaction_file_handle(tx_idx)
+      self.tx_file = create_transaction_file_handle(self.tx_idx, self.max_count, self.fname_stub)
 
   def __del__(self):
-    logger.info("closing final file handle")
+    logger.info("closing final file handle after %i transactions" % self.tx_idx)
     self.tx_file.close()
