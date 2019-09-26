@@ -22,8 +22,8 @@ services:
 
     logging:
       options:
-        max-file: "5"
-        max-size: "500k"
+        max-file: "4"
+        max-size: "100k"
 
     #NB: this command does chown as a hack to write on the
     #    mapped volumes, would be better to use docker volumes
@@ -35,19 +35,23 @@ services:
           chown root:root /block-data && \
           bitcoind \
             -datadir=/block-data \
-            -dbcache=200 \
             -txindex=1 \
-            -reindex \
             -zmqpubrawtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
-            -zmqpubhashblock=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
             -zmqpubhashtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
             -server \
             -rpcuser=$BITCOIND_RPC_USER \
             -rpcpassword=$BITCOIND_RPC_PASS \
             -rpcallowip=$BTC_NETMASK \
             -rpcbind=0.0.0.0:$BITCOIND_RPC_PORT \
-            -rpcport=$BITCOIND_RPC_PORT
+            -rpcport=$BITCOIND_RPC_PORT \
+            -maxmempool=40 \
+            -dbcache=120 \
+            -par=1 \
+            -rpcthreads=1
 
+#            -reindex \
+
+#            -zmqpubhashblock=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
 #            -debug=rpc \
 #            -debug=zmq \
 #            -debug=net \
@@ -61,88 +65,29 @@ services:
       - $DATA_DIR/unc:/txs
     environment:
       RAWTX_SOURCE_ADDR: tcp://bitcoind:$BITCOIND_ZMQ_PORT
-      MONGODB_HOST: mongo-storage
-      MONGODB_PORT: 27017
-      MONGODB_USER: $MONGODB_USER
-      MONGODB_PASSWORD: $MONGODB_PASSWORD
-      MONGODB_DATABASE: $MONGODB_DATABASE
-      MONGODB_COLLECTION: $MONGODB_COLLECTION
       BITCOIND_HOST: bitcoind
       BITCOIND_PORT: $BITCOIND_RPC_PORT
       BITCOIND_RPC_USER: $BITCOIND_RPC_USER
       BITCOIND_RPC_PASSWORD: $BITCOIND_RPC_PASS
-
+      OUTPUT_FILE: /txs/txc
+      RAWTX_COMPRESSED_LOGS: 1
+      RAWTX_COUNT_PER_FILE: 20000
+ 
     logging:
       options:
-        max-file: "5"
-        max-size: "500k"
+        max-file: "2"
+        max-size: "50k"
 
     depends_on:
       - bitcoind
-      - mongo-storage
 
     command:
-      - "/bin/bash"
+      - "/bin/sh"
       - -c
       - |
           chown root:root /txs && \
           sleep 10 && \
           python3 -u /usr/local/bin/zmq_c.py
-
-  # MONGODB FOR TRANSACTIONS
-  mongo-storage:
-    image: $MONGO_IMAGE
-    networks: [btc-logger-network]
-    volumes:
-      - $DATA_DIR/mdb:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: $MONGODB_USER
-      MONGO_INITDB_ROOT_PASSWORD: $MONGODB_PASSWORD
-    logging:
-      options:
-        max-file: "5"
-        max-size: "500k"
-
-  # MONGO EXPORT SERVICE
-  #   will export the mongodb data everytime it is
-  #   brought up (even at startup...)
-  # output is piped through gzip; takes longer but
-  # is 4x smaller
-  # FIXME: not sure we need to define the env vars
-  #        they are just passed in anyway?
-  mongo-export:
-    image: $MONGO_IMAGE
-    networks: [btc-logger-network]
-    volumes:
-      - $DATA_DIR/backup:/data/db
-    environment:
-      MONGODB_USER: $MONGODB_USER
-      MONGODB_PASSWORD: $MONGODB_PASSWORD
-      MONGODB_DATABASE: $MONGODB_DATABASE
-      MONGODB_COLLECTION: $MONGODB_COLLECTION
-    command:
-      - "/bin/sh"
-      - "-c"
-      - |
-          exec mongodump \
-            --host mongo-storage \
-            --port 27017 \
-            --username $MONGODB_USER \
-            --password $MONGODB_PASSWORD \
-            --authenticationDatabase admin \
-            --db $MONGODB_DATABASE \
-            --collection $MONGODB_COLLECTION \
-            --gzip \
-            --archive \
-           > /data/db/export.mongodbo.gz
-
-    depends_on:
-      - mongo-storage
-
-    logging:
-      options:
-        max-file: "5"
-        max-size: "500k"
 
   # RPC TESTS
   # test remote producecalls to bitcoind from a python script
@@ -150,7 +95,7 @@ services:
     build: ./test-rpc-py
     networks: [btc-logger-network]
     command:
-      - "/bin/bash"
+      - "/bin/sh"
       - "-c"
       - "hostname -i && python -u /usr/local/bin/getchaininfo.py"
     environment:
@@ -160,8 +105,8 @@ services:
       RPC_PASS: $BITCOIND_RPC_PASS
     logging:
       options:
-        max-file: "5"
-        max-size: "500k"
+        max-file: "4"
+        max-size: "100k"
 
   # test rpc to bitcoind from curl
   test-rpc-curl:
@@ -180,5 +125,5 @@ services:
            http://bitcoind:$BITCOIND_RPC_PORT/
     logging:
       options:
-        max-file: "5"
-        max-size: "500k"
+        max-file: "4"
+        max-size: "100k"
