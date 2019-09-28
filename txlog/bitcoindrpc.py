@@ -23,10 +23,15 @@ class BitcoinRPC(object):
                           "params": list(params),
                           "jsonrpc": "2.0"})
     logger.debug("sending rpc: '%s'" % payload)
-    resp = self.session.post(self.url,
-                             headers=self.headers,
-                             data=payload,
-                             auth=(self.user, self.password))
+
+    try:
+      resp = self.session.post(self.url,
+                               headers=self.headers,
+                               data=payload,
+                               auth=(self.user, self.password))
+    except Exception as e:
+      logger.exception(e)
+
     logger.debug("rpc returned: %i (%s)" % (resp.status_code, resp.text))
     if resp.status_code == 200:
       return resp.json()["result"]

@@ -59,10 +59,12 @@ class TextWriter(object):
     if rotate_transaction_file(self.tx_idx, self.max_count) is True:
       logger.info("swapping transaction file (%i transactions)" % self.tx_idx)
       logger.info("closing transaction file: '%s'" % self.tx_file.name)
+      self.tx_file.flush()
       self.tx_file.close()
 
       self.tx_file = create_transaction_file_handle(self.tx_idx, self.max_count, self.fname_stub)
 
   def __del__(self):
     logger.info("closing final file handle after %i transactions" % self.tx_idx)
+    self.tx_file.flush()
     self.tx_file.close()

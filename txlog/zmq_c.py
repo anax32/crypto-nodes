@@ -49,7 +49,10 @@ def get_transaction_writer():
     def unpack_and_write_mdb(hex_string):
       logger.debug("decoding: '%s'" % hex_string.hex())
 
-      decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
+      try:
+        decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
+      except Exception as e:
+        logger.exception(e)
 
       if decoded_hex_string is not None:
         mdb(decoded_hex_string)
@@ -68,7 +71,10 @@ def get_transaction_writer():
 
     def unpack_and_write_txt(hex_string):
       logger.debug("decoding: '%s'" % hex_string.hex())
-      decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
+      try:
+        decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
+      except Exception as e:
+        logger.exception(e)
 
       if decoded_hex_string is not None:
         txw(json.dumps(decoded_hex_string))
