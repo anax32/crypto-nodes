@@ -44,8 +44,8 @@ services:
             -rpcallowip=$BTC_NETMASK \
             -rpcbind=0.0.0.0:$BITCOIND_RPC_PORT \
             -rpcport=$BITCOIND_RPC_PORT \
-            -maxmempool=40 \
-            -dbcache=120 \
+            -maxmempool=30 \
+            -dbcache=80 \
             -par=1 \
             -rpcthreads=1
 
@@ -72,6 +72,11 @@ services:
       OUTPUT_FILE: /txs/txc
       RAWTX_COMPRESSED_LOGS: 1
       RAWTX_COUNT_PER_FILE: 20000
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_REGION_NAME: $AWS_REGION_NAME
+      AWS_BUCKET_NAME: $AWS_BUCKET_NAME
+      AWS_FILE_PREFIX: "txc/txt"
  
     logging:
       options:

@@ -2,6 +2,7 @@ import os
 import logging
 import gzip
 import binascii
+from multiprocesing import Process
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def create_transaction_file_handle(count, max_count, fname_stub):
 class TextWriter(object):
   """write transactions to a text file
   """
-  def __init__(self, max_count, fname, compressed=False):
+  def __init__(self, max_count, fname, compressed=False, write_complete_fn=None):
     if compressed:
       logger.info("writing compressed transactions to: '%s'" % fname)
     else:
@@ -60,8 +61,15 @@ class TextWriter(object):
       logger.info("swapping transaction file (%i transactions)" % self.tx_idx)
       logger.info("closing transaction file: '%s'" % self.tx_file.name)
       self.tx_file.flush()
+      last_filename = self.tx_file.name
       self.tx_file.close()
 
+      if write_complete_fn is not None:
+        # run the callback in another process
+        p = Process(target=write_complete_fn, args=(last_filename))
+        p.start()
+
+      # create a new file to write on
       self.tx_file = create_transaction_file_handle(self.tx_idx, self.max_count, self.fname_stub)
 
   def __del__(self):

@@ -7,6 +7,7 @@ import sys
 from textwriter import TextWriter
 from mongowriter import MongoWriter
 from bitcoindrpc import BitcoinRPC
+from s3_uploader import upload_file_to_s3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -30,6 +31,15 @@ if "MONGODB_HOST" in os.environ:
   assert "BITCOIND_RPC_PASSWORD" in os.environ
   assert "BITCOIND_HOST" in os.environ
   assert "BITCOIND_PORT" in os.environ
+
+def upload_on_write_complete(filename):
+  logger.info("upload_on_write_complete('%s')" % filename)
+  # upload the file to s3
+  upload_file_to_s3(filename)
+  # delete the original file to save disk
+  logger.info("removing file '%s' after upload" % filename)
+  os.remove(filename)
+  logger.info("upload complete")
 
 def get_transaction_writer():
   """create a writer function depedning on the env vars
@@ -67,7 +77,8 @@ def get_transaction_writer():
 
     txw = TextWriter(max_count=int(os.environ["RAWTX_COUNT_PER_FILE"]),
                      fname=os.environ["OUTPUT_FILE"],
-                     compressed="RAWTX_COMPRESSED_LOGS" in os.environ)
+                     compressed="RAWTX_COMPRESSED_LOGS" in os.environ,
+                     write_complete_fn=upload_on_write_complete)
 
     def unpack_and_write_txt(hex_string):
       logger.debug("decoding: '%s'" % hex_string.hex())
