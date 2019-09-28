@@ -1,6 +1,7 @@
 import os
 import sys
 import boto3
+import socket
 import logging
 
 
@@ -30,7 +31,9 @@ def upload_file_to_s3(filename):
   # upload the file
   s3.upload_file(Filename=filename,
                  Bucket=aws_s3_bucket,
-                 Key=os.path.join(aws_s3_prefix, os.path.basename(filename)))
+                 Key=os.path.join(aws_s3_prefix,
+                                  socket.gethostname(),
+                                  os.path.basename(filename)))
 
 if __name__ == "__main__":
   logger.info("invoking from cli")
