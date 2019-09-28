@@ -2,7 +2,8 @@ FROM anax32/python-zmq
 
 RUN pip3 install --no-cache-dir \
        pymongo \
-       requests
+       requests \
+       boto3
 
 COPY ./zmq_c.py /usr/local/bin/zmq_c.py
 COPY ./textwriter.py /usr/local/bin/textwriter.py
