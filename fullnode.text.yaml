@@ -59,7 +59,11 @@ services:
 
   # TRANSACTION LOGGER
   txlog:
-    build: ./txlog
+    build:
+      context: ./txlog
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
+
     networks: [btc-logger-network]
     volumes:
       - $DATA_DIR/unc:/txs
@@ -97,7 +101,11 @@ services:
   # RPC TESTS
   # test remote producecalls to bitcoind from a python script
   test-rpc-py:
-    build: ./test-rpc-py
+    build:
+      context: ./test-rpc-py
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
+
     networks: [btc-logger-network]
     command:
       - "/bin/sh"
