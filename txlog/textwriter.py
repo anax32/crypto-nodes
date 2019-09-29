@@ -2,7 +2,7 @@ import os
 import logging
 import gzip
 import binascii
-from multiprocesing import Process
+from multiprocessing import Process
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,8 @@ class TextWriter(object):
     self.tx_file = create_transaction_file_handle(self.tx_idx, self.max_count, self.fname_stub)
     assert self.tx_file is not None
 
+    self.write_complete_fn = write_complete_fn
+
     logger.info("initial logfile created at: '%s'" % self.tx_file.name)
 
   def __call__(self, tx_string):
@@ -64,9 +66,9 @@ class TextWriter(object):
       last_filename = self.tx_file.name
       self.tx_file.close()
 
-      if write_complete_fn is not None:
+      if self.write_complete_fn is not None:
         # run the callback in another process
-        p = Process(target=write_complete_fn, args=(last_filename))
+        p = Process(target=self.write_complete_fn, args=(last_filename,))
         p.start()
 
       # create a new file to write on
