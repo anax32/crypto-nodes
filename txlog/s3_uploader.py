@@ -13,8 +13,6 @@ def upload_file_to_s3(filename):
   """read a file from disk
      and upload to s3
   """
-  logger.info("uploading '%s' to s3")
-
   # get the credentials
   aws_s3_creds = {
     "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
@@ -25,15 +23,26 @@ def upload_file_to_s3(filename):
   aws_s3_bucket = os.environ["AWS_BUCKET_NAME"]
   aws_s3_prefix = os.environ["AWS_FILE_PREFIX"]
 
+  key_name = os.path.join(aws_s3_prefix,
+                          socket.gethostname(),
+                          os.path.basename(filename)))
+
   # create the boto client
-  s3 = boto3.client("s3", **aws_s3_creds)
+  try:
+    s3 = boto3.client("s3", **aws_s3_creds)
+  except Exception as e:
+    logger.exception("Could not get boto3.client")
+    return
+
+  logger.info("uploading '%s' to '%s'" % (filename, key_name))
 
   # upload the file
-  s3.upload_file(Filename=filename,
-                 Bucket=aws_s3_bucket,
-                 Key=os.path.join(aws_s3_prefix,
-                                  socket.gethostname(),
-                                  os.path.basename(filename)))
+  try:
+    s3.upload_file(Filename=filename,
+                   Bucket=aws_s3_bucket,
+                   Key=key_name)
+  except Exception as e:
+    logger.exception("Could not upload_file()")
 
 if __name__ == "__main__":
   logger.info("invoking from cli")
