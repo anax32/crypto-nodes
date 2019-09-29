@@ -25,7 +25,7 @@ def upload_file_to_s3(filename):
 
   key_name = os.path.join(aws_s3_prefix,
                           socket.gethostname(),
-                          os.path.basename(filename)))
+                          os.path.basename(filename))
 
   # create the boto client
   try:
