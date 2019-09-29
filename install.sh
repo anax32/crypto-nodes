@@ -5,6 +5,7 @@ apt-get update && \
 apt-get install -yq \
   tmux \
   docker-compose \
+  gnupg2 pass \
   git \
   python3-pip
 
