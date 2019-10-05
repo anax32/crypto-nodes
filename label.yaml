@@ -3,7 +3,7 @@ version: "3"
 services:
   # download transactions from s3
   get-addresses:
-    build: ./get-txr-addr
+    build: ./make-txr-addr
     volumes:
       - $DATA_DIR/txs/:/data
     environment:
