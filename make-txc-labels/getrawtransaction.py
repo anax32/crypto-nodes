@@ -3,6 +3,8 @@ import json
 import os
 import logging
 import sys
+import itertools
+from time import clock
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -15,48 +17,80 @@ logger.addHandler(handler)
 
 logger.info(__name__)
 
-def getrawtransaction(txids):
+def getrawtransaction(txids, session=None):
   """pass a list of txids in to get a list of confimration counts
   """
   url = "http://%s:%s" % (os.environ["RPC_HOST"], os.environ["RPC_PORT"])
-  logger.info(url)
-  headers = {"content-type": "text/plain",
-             "cache-control": "no-cache"}
+  err = (-1, -1, "-1") # error marker
 
-  logger.info("got %i transactions" % len(txids))
+  if session is None:
+    session = requests.Session()
+
+  session.headers.update({"content-type": "text/plain",
+                          "cache-control": "no-cache"})
+  session.auth=(os.environ["RPC_USER"], os.environ["RPC_PASS"])
+
+  logger.info("sending %i transactions to '%s'" % (len(txids), url))
   confirmations = []
 
+  T = clock()
+
   for txid in txids:
-    logger.info("url: '%s'" % url)
-    response = requests.post(
+    response = session.post(
       url,
       data=json.dumps({
         "jsonrpc": "2.0",
         "method": "getrawtransaction",
         "params": [txid, True],
         "id": "get_confirmation_count"
-      }),
-      headers=headers,
-      auth=(os.environ["RPC_USER"], os.environ["RPC_PASS"]))
+      }))
 
-    logger.info(response.status_code)
+    if response.status_code == 500:
+      # 500 indicates the tid was not found, which may be good for
+      # marking as unconfirmed, but we never know for sure if a tid
+      # will never be confirmed, only that at this current point, it
+      # has not been confirmed. So we treat all "not found" the same
+      # way, which is -1 for confirmations
+      # sort of expect a not found to be 404
+      err = response.json()
+      logger.error("rpc.status_code: %i (%s)" % (response.status_code,
+                                                 response.text))
+      confirmations.append((-1, -1, err["error"]["code"]))
+    elif response.status_code != 200:
+      logger.error("rpc.status_code: %i (%s)" % (response.status_code,
+                                                 response.text))
+      confirmations.append(err)
+    else:
+      try:
+        txc = response.json()
+        confirmations.append((txc["result"]["confirmations"],
+                              txc["result"]["blockhash"],
+                              "found"))
+      except Exception as e:
+        logger.exception("could not parse json response")
+        confirmations.append(err)
 
-    conf = (-1, -1)
-    try:
-      txc = response.json()
-      conf = (txc["result"]["confirmations"],
-              txc["result"]["blockhash"])
-    except Exception as e:
-      logger.exception("could not parse json response")
-
-    confirmations += conf
-
-  logger.info("got %i confirmations" % len(confirmations))
+  logger.info("got %i confirmations in %0.2fs" % (len(confirmations), clock()-T))
   return confirmations
 
 if __name__ == "__main__":
+  TX_BLOCK_SIZE = int(os.environ["TX_READ_COUNT"])
+  iter = 0
+
+  session = requests.Session()
+
   # read a file of transaction ids
-  with open(sys.argv[1], "r"), open(sys.argv[2]) as f, r:
-    txid = f.readline()
-    conf = get_raw_transaction([txid])
-    print("%s %s %s" % (txid, conf[0][0], conf[0][1]), file=r)
+  with open(sys.argv[1], "r") as f:
+    for iter in itertools.count():
+      logger.info("block %i (%i tx)" % (iter, iter*TX_BLOCK_SIZE))
+      try:
+        txs = [next(f).strip() for _ in range(TX_BLOCK_SIZE)]
+      except StopIteration:
+        logger.exception("end of file")
+        break
+
+      confirmations = getrawtransaction(txs, session=session)
+
+      with open(sys.argv[2], "a") as r:
+        for txid, confirmation in zip(txs, confirmations):
+          r.write("%s %s %s\n" % (txid, confirmation[0], confirmation[1]))
