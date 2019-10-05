@@ -22,11 +22,11 @@ services:
     command:
       - "/bin/bash"
       - "-c"
-      - "copy-txcs.sh && get-addrs.sh && cnt-addrs.sh"
+      - "copy-transactions.sh && get-addresses.sh && count-addresses.sh"
 
   # extract transaction data from local copy
   # NB: must run extract-addresses first
-  extract-transactions:
+  extract-transaction-ids:
     build: ./transaction-extractor
     volumes:
       - $DATA_DIR/txs/:/data
@@ -46,4 +46,4 @@ services:
     command:
       - "/bin/bash"
       - "-c"
-      - "get-transactions.sh"
+      - "get-transaction-ids.sh"
