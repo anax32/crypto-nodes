@@ -59,6 +59,9 @@ class TextWriter(object):
     self.tx_idx += 1
     logger.debug("logging transaction %i" % self.tx_idx)
 
+    if self.tx_idx % self.max_count/10 == 0:
+      logger.info("logging transaction %i/%i" % (self.tx_idx%self.max_count, self.max_count))
+
     if rotate_transaction_file(self.tx_idx, self.max_count) is True:
       logger.info("swapping transaction file (%i transactions)" % self.tx_idx)
       logger.info("closing transaction file: '%s'" % self.tx_file.name)

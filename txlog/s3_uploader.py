@@ -34,7 +34,7 @@ def upload_file_to_s3(filename):
     logger.exception("Could not get boto3.client")
     return
 
-  logger.info("uploading '%s' to '%s'" % (filename, key_name))
+  logger.info("uploading to '%s'" % (key_name))
 
   # upload the file
   try:
