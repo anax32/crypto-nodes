@@ -9,9 +9,8 @@ RUN apt-get update && \
     pip install awscli
 
 COPY ./copy-txcs.sh /usr/local/bin/copy-txcs.sh
-COPY ./get-addrs.sh /usr/local/bin/get-addrs.sh
-COPY ./cnt-addrs.sh /usr/local/bin/cnt-addrs.sh
-COPY ./find-addrs.sh /usr/local/bin/find-addrs.sh
+COPY ./get-addresses.sh /usr/local/bin/get-addresses.sh
+COPY ./count-addresses.sh /usr/local/bin/count-addresses.sh
 COPY ./get-transactions.sh /usr/local/bin/get-transactions.sh
 
 # default run command
