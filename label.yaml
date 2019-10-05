@@ -7,27 +7,17 @@ services:
     volumes:
       - $DATA_DIR/txs/:/data
     environment:
-      $AWS_BUCKET_NAME: $AWS_BUCKET_NAME
-      $AWS_FILE_PREFIX: $AWS_FILE_PREFIX
-      $UPLOADING_HOST: 0259bbd85af5
-      $AWS_DOWNLOAD_DIR: /data
-      $ADDRESS_FILE: addr.txt.gz
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_REGION: $AWS_REGION_NAME
+      AWS_BUCKET_NAME: $AWS_BUCKET_NAME
+      AWS_FILE_PREFIX: $AWS_FILE_PREFIX
+      UPLOADING_HOST: 0259bbd85af5
+      LOCAL_DATA_DIR: /data
+      FILE_PATTERN: "*.log.gz"
+      ADDRESS_FILE: addr.txt.gz
+      COUNT_FILE: addr-cnts.txt.gz
     command:
       - "/bin/bash"
       - "-c"
-      - "copy-txcs.sh"
-
-  # count unique addresses
-  count-addresses:
-    build: ./get-addresses
-    volumes:
-      - $DATA_DIR/txs/:/data
-    environment:
-      $ADDRESS_FILE: addr.txt.gz
-      $COUNT_FILE: addr-cnts.txt.gz
-    command:
-      - "/bin/bash"
-      - "-c"
-      - "sleep 20 && cnt-addrs.sh"
-    depends_on:
-      - get-addresses
+      - "copy-txcs.sh && get-addrs.sh && cnt-addrs.sh"

@@ -1,11 +1,9 @@
 #!/bin/sh
 set -u
 
-echo $AWS_BUCKET_NAME
-echo $AWS_FILE_PREFIX
-echo $UPLOADING_HOST
+echo "downloading data from '$AWS_BUCKET_NAME/$AWS_FILE_PREFIX/$UPLOADING_HOST' to '$LOCAL_DATA_DIR'"
 
 aws s3 cp \
   s3://$AWS_BUCKET_NAME/$AWS_FILE_PREFIX/$UPLOADING_HOST \
-  $AWS_DOWNLOAD_DIR \
+  $LOCAL_DATA_DIR \
   --recursive
