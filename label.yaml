@@ -1,14 +1,9 @@
 version: "3"
 
-networks:
-  default:
-    external:
-      name: btc_btc-logger-network
-
 services:
   # download transactions from s3
   get-addresses:
-    build: ./make-txc-addr
+    build: ./transaction-extractor
     volumes:
       - $DATA_DIR/txs/:/data
     environment:
@@ -16,32 +11,15 @@ services:
       AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       AWS_REGION: $AWS_REGION_NAME
       AWS_BUCKET_NAME: $AWS_BUCKET_NAME
-      AWS_FILE_PREFIX: $AWS_FILE_PREFIX
+      AWS_SOURCE_PREFIX: $AWS_TX_PREFIX
+      AWS_DEST_PREFIX: $AWS_STATS_PREFIX
       UPLOADING_HOST: 0259bbd85af5
       LOCAL_DATA_DIR: /data
       FILE_PATTERN: "*.log.gz"
-      ADDRESS_FILE: addr.txt.gz
+      ADDRESS_FILE: addresses.txt.gz
       TRANSACTION_FILE: transactions.txt.gz
-      COUNT_FILE: addr-cnts.txt.gz
+      COUNT_FILE: address-counts.txt.gz
     command:
       - "/bin/bash"
       - "-c"
       - "copy-txcs.sh && get-addrs.sh && cnt-addrs.sh && get-transactions.sh"
-
-  get-transaction-labels:
-    build:
-      context: ./make-txc-labels
-      args:
-        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
-    volumes:
-      - $DATA_DIR/txs/:/data
-    environment:
-      RPC_HOST: bitcoind
-      RPC_PORT: $BITCOIND_RPC_PORT
-      RPC_USER: $BITCOIND_RPC_USER
-      RPC_PASS: $BITCOIND_RPC_PASS
-      TX_READ_COUNT: 400
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "python /usr/local/bin/getrawtransaction.py /data/transactions.txt.gz /data/uncs.txt.gz"
