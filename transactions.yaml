@@ -2,7 +2,7 @@ version: "3"
 
 services:
   # download transactions from s3
-  get-addresses:
+  extract-addresses:
     build: ./transaction-extractor
     volumes:
       - $DATA_DIR/txs/:/data
@@ -22,4 +22,28 @@ services:
     command:
       - "/bin/bash"
       - "-c"
-      - "copy-txcs.sh && get-addrs.sh && cnt-addrs.sh && get-transactions.sh"
+      - "copy-txcs.sh && get-addrs.sh && cnt-addrs.sh"
+
+  # extract transaction data from local copy
+  # NB: must run extract-addresses first
+  extract-transactions:
+    build: ./transaction-extractor
+    volumes:
+      - $DATA_DIR/txs/:/data
+    environment:
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_REGION: $AWS_REGION_NAME
+      AWS_BUCKET_NAME: $AWS_BUCKET_NAME
+      AWS_SOURCE_PREFIX: $AWS_TX_PREFIX
+      AWS_DEST_PREFIX: $AWS_STATS_PREFIX
+      UPLOADING_HOST: 0259bbd85af5
+      LOCAL_DATA_DIR: /data
+      FILE_PATTERN: "*.log.gz"
+      ADDRESS_FILE: addresses.txt.gz
+      TRANSACTION_FILE: transactions.txt.gz
+      COUNT_FILE: address-counts.txt.gz
+    command:
+      - "/bin/bash"
+      - "-c"
+      - "get-transactions.sh"
