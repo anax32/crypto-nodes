@@ -12,7 +12,7 @@ networks:
 services:
   # BITCOIND FULL NODE
   bitcoind:
-    build: ./from-repo
+    build: ./bitcoind-from-repo
     networks: [btc-logger-network]
     volumes: 
       - $DATA_DIR/blks:/block-data
@@ -60,7 +60,7 @@ services:
   # TRANSACTION LOGGER
   txlog:
     build:
-      context: ./txlog
+      context: ./get-txc-data
       args:
         BASE_IMAGE: $PYTHON_ZMQ_IMAGE
 
