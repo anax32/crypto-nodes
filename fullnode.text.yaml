@@ -60,7 +60,7 @@ services:
   # TRANSACTION LOGGER
   txlog:
     build:
-      context: ./get-txc-data
+      context: ./transaction-logger
       args:
         BASE_IMAGE: $PYTHON_ZMQ_IMAGE
 
@@ -140,3 +140,21 @@ services:
       options:
         max-file: "4"
         max-size: "100k"
+
+  confirm-transactions:
+    build:
+      context: ./transaction-confirmer
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
+    volumes:
+      - $DATA_DIR/txs/:/data
+    environment:
+      RPC_HOST: bitcoind
+      RPC_PORT: $BITCOIND_RPC_PORT
+      RPC_USER: $BITCOIND_RPC_USER
+      RPC_PASS: $BITCOIND_RPC_PASS
+      TX_READ_COUNT: 400
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "python /usr/local/bin/getrawtransaction.py /data/transactions.txt.gz /data/transaction-labels.txt.gz"
