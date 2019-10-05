@@ -80,7 +80,7 @@ services:
       AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       AWS_REGION_NAME: $AWS_REGION_NAME
       AWS_BUCKET_NAME: $AWS_BUCKET_NAME
-      AWS_FILE_PREFIX: "txc/txt"
+      AWS_FILE_PREFIX: $AWS_FILE_PREFIX
  
     logging:
       options:
