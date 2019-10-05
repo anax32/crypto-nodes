@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def upload_file_to_s3(filename):
+def upload_file_to_s3(aws_s3_bucket, aws_s3_prefix, filename):
   """read a file from disk
      and upload to s3
   """
@@ -19,9 +19,6 @@ def upload_file_to_s3(filename):
     "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
     "region_name": os.environ["AWS_REGION_NAME"]
   }
-
-  aws_s3_bucket = os.environ["AWS_BUCKET_NAME"]
-  aws_s3_prefix = os.environ["AWS_FILE_PREFIX"]
 
   key_name = os.path.join(aws_s3_prefix,
                           socket.gethostname(),
@@ -46,4 +43,9 @@ def upload_file_to_s3(filename):
 
 if __name__ == "__main__":
   logger.info("invoking from cli")
-  upload_file_to_s3(sys.argv[1])
+  logger.info("bucket: '%s', prefix: '%s', filename: '%s'" % (
+              sys.argv[1],
+              sys.argv[2],
+              sys.argv[3])
+
+  upload_file_to_s3(sys.argv[1], sys.argv[2], sys.argv[3])

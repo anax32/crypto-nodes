@@ -34,8 +34,12 @@ if "MONGODB_HOST" in os.environ:
 
 def upload_on_write_complete(filename):
   logger.info("upload_on_write_complete('%s')" % filename)
+
   # upload the file to s3
-  upload_file_to_s3(filename)
+  upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
+                    os.environ["AWS_TX_PREFIX"],
+                    filename)
+
   # delete the original file to save disk
   logger.info("removing file '%s' after upload" % filename)
   os.remove(filename)
