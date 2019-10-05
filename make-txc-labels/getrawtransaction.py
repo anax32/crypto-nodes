@@ -5,6 +5,7 @@ import logging
 import sys
 import itertools
 from time import clock
+import gzip
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -79,18 +80,24 @@ if __name__ == "__main__":
 
   session = requests.Session()
 
+  if sys.argv[1].endswith(".gz"):
+    open_fn = gzip.open
+  else:
+    open_fn = open
+
   # read a file of transaction ids
-  with open(sys.argv[1], "r") as f:
+  with open_fn(sys.argv[1], "rb") as f:
     for iter in itertools.count():
       logger.info("block %i (%i tx)" % (iter, iter*TX_BLOCK_SIZE))
       try:
-        txs = [next(f).strip() for _ in range(TX_BLOCK_SIZE)]
+        txs = [next(f).decode("utf-8").strip() for _ in range(TX_BLOCK_SIZE)]
       except StopIteration:
         logger.exception("end of file")
         break
 
       confirmations = getrawtransaction(txs, session=session)
 
-      with open(sys.argv[2], "a") as r:
+      with open_fn(sys.argv[2], "ab") as r:
         for txid, confirmation in zip(txs, confirmations):
-          r.write("%s %s %s\n" % (txid, confirmation[0], confirmation[1]))
+          output = "%s %s %s\n" % (txid, confirmation[0], confirmation[1])
+          r.write(output.encode())
