@@ -6,7 +6,10 @@ RUN apt-get update && \
       gzip \
       jq \
     && \
-    pip install awscli
+    rm -rf /var/lib/apt/lists/* \
+    && \
+    pip install --no-cache-dir \
+      awscli
 
 COPY ./copy-transactions.sh /usr/local/bin/copy-transactions.sh
 COPY ./get-addresses.sh /usr/local/bin/get-addresses.sh
