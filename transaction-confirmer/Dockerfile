@@ -2,7 +2,8 @@ ARG BASE_IMAGE=anax32/python-zmq
 FROM $BASE_IMAGE
 
 RUN pip3 install --no-cache-dir \
-      requests
+      requests \
+      awscli
 
 COPY ./getchaininfo.py /usr/local/bin/getchaininfo.py
 COPY ./getrawtransaction.py /usr/local/bin/getrawtransaction.py
