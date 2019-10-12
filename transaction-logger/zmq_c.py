@@ -37,7 +37,7 @@ def upload_on_write_complete(filename):
 
   # upload the file to s3
   upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
-                    os.environ["AWS_TX_PREFIX"],
+                    os.environ["AWS_FILE_PREFIX"],
                     filename)
 
   # delete the original file to save disk
