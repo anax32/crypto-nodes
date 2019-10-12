@@ -13,7 +13,7 @@ rm $LOCAL_DATA_DIR/$ADDRESS_FILE
 
 echo "writing addresses to '$ADDRESS_FILE'"
 
-gzip --version
+gzip --version | head -n 1
 jq --version
 
 # parse the logs
