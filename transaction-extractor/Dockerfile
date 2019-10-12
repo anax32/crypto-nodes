@@ -14,6 +14,7 @@ RUN apt-get update && \
 COPY ./get-addresses.sh /usr/local/bin/get-addresses.sh
 COPY ./count-addresses.sh /usr/local/bin/count-addresses.sh
 COPY ./get-transaction-ids.sh /usr/local/bin/get-transaction-ids.sh
+COPY ./get-graph-edges.sh /usr/local/bin/get-graph-edges.sh
 
 # default run command
 

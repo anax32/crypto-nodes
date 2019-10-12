@@ -39,3 +39,20 @@ services:
       /bin/bash -c "aws s3 cp s3://$AWS_BUCKET_NAME/$AWS_AGG_PREFIX/$ADDRESS_FILE $LOCAL_DATA_DIR/$ADDRESS_FILE &&
                     get-transaction-ids.sh &&
                     aws s3 cp $LOCAL_DATA_DIR/$TRANSACTION_FILE s3://$AWS_BUCKET_NAME/$AWS_AGG_PREFIX/$TRANSACTION_FILE"
+
+  # extract transaction graph edges
+  extract-graph-edges:
+    build: ./transaction-extractor
+    volumes:
+      - $DATA_DIR/txs/:/data
+    environment:
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_REGION: $AWS_REGION_NAME
+      LOCAL_DATA_DIR: $LOCAL_DATA_DIR
+      GRAPH_FILE: $GRAPH_FILE
+      FILE_PATTERN: "*.log.gz"
+    command: >
+      /bin/bash -c "aws s3 sync s3://$AWS_BUCKET_NAME/$AWS_TX_PREFIX/$UPLOADING_HOST $LOCAL_DATA_DIR &&
+                    get-graph-edges.sh &&
+                    aws s3 cp $LOCAL_DATA_DIR/$GRAPH_FILE s3://$AWS_BUCKET_NAME/$AWS_AGG_PREFIX/$GRAPH_FILE"
