@@ -46,6 +46,6 @@ if __name__ == "__main__":
   logger.info("bucket: '%s', prefix: '%s', filename: '%s'" % (
               sys.argv[1],
               sys.argv[2],
-              sys.argv[3])
+              sys.argv[3]))
 
   upload_file_to_s3(sys.argv[1], sys.argv[2], sys.argv[3])
