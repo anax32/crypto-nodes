@@ -12,7 +12,7 @@ networks:
 services:
   # BITCOIND FULL NODE
   bitcoind:
-    build: ./from-repo
+    build: ./bitcoind-from-repo
     networks: [btc-logger-network]
     volumes: 
       - $DATA_DIR/blks:/block-data
@@ -55,7 +55,7 @@ services:
 
   # TRANSACTION LOGGER
   txlog:
-    build: ./txlog
+    build: ./transaction-logger
     networks: [btc-logger-network]
     volumes:
       - $DATA_DIR/unc:/txs
