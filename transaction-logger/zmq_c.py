@@ -36,22 +36,29 @@ def upload_on_write_complete(filename):
   logger.info("upload_on_write_complete('%s')" % filename)
 
   # upload the file to s3
-  upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
-                    os.environ["AWS_FILE_PREFIX"],
-                    filename)
+  try:
+    upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
+                      os.environ["AWS_FILE_PREFIX"],
+                      filename)
+  except Exception as e:
+    # expect this is an invalid endpoint
+    logger.exception(e)
+    return
 
-  # delete the original file to save disk
+  # delete the original file to save disk space if the upload was complete
   logger.info("removing file '%s' after upload" % filename)
   os.remove(filename)
   logger.info("upload complete")
 
-def get_transaction_writer():
-  """create a writer function depedning on the env vars
+def get_transaction_writers():
+  """create writer functions depedning on the env vars
   """
   rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
                    os.environ["BITCOIND_RPC_PASSWORD"],
                    os.environ["BITCOIND_HOST"],
                    int(os.environ["BITCOIND_PORT"]))
+
+  writers = []
 
   if "MONGODB_HOST" in os.environ:
     mdb = MongoWriter(host=os.environ["MONGODB_HOST"],
@@ -73,16 +80,15 @@ def get_transaction_writer():
       else:
         logger.warning("rpc call returned None (skipping record)")
 
-    return unpack_and_write_mdb
+    writers.append(unpack_and_write_mdb)
 
-
-  elif "OUTPUT_FILE" in os.environ:
+  if "OUTPUT_FILE" in os.environ:
     import json
 
     txw = TextWriter(max_count=int(os.environ["RAWTX_COUNT_PER_FILE"]),
                      fname=os.environ["OUTPUT_FILE"],
                      compressed="RAWTX_COMPRESSED_LOGS" in os.environ,
-                     write_complete_fn=upload_on_write_complete)
+                     write_complete_fn=upload_on_write_complete if "AWS_BUCKET_NAME" in os.environ else None)
 
     def unpack_and_write_txt(hex_string):
       logger.debug("decoding: '%s'" % hex_string.hex())
@@ -96,12 +102,12 @@ def get_transaction_writer():
       else:
         logger.warning("rpc call returned None (skipping record)")
 
-    return unpack_and_write_txt
+    writers.append(unpack_and_write_txt)
 
-  else:
-    logger.warning("No transaction writer created")
-    return None
+  if len(writers) < 1:
+    logger.warning("No transaction writers created")
 
+  return writers
 
 
 """
@@ -115,8 +121,8 @@ socket.connect(os.environ["RAWTX_SOURCE_ADDR"])
 
 logger.info("recving from '%s'" % os.environ["RAWTX_SOURCE_ADDR"])
 
-writer = get_transaction_writer()
-logger.info("using tx writer: '%s'" % str(writer))
+writers = get_transaction_writers()
+logger.info("using tx writers: '%s'" % str(writers))
 
 try:
   for tx_idx in itertools.count():
@@ -125,10 +131,11 @@ try:
     logger.debug("got body (len: %i (%i, %i))" % (len(msg), len(msg[0]), len(msg[1])))
     body = msg[1]
 
-    if writer is not None:
-      writer(body)
+    if len(writers) > 0:
+      for writer in writers:
+        writer(body)
     else:
-      logger.debug("writer is None, not logging tx")
+      logger.warning("no writers in use, not logging tx")
 
 except KeyboardInterrupt:
   logger.info("cleanup")
