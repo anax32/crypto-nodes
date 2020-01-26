@@ -55,7 +55,10 @@ services:
 
   # TRANSACTION LOGGER
   txlog:
-    build: ./transaction-logger
+    build:
+      context: ./transaction-logger
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
     networks: [btc-logger-network]
     volumes:
       - $DATA_DIR/unc:/txs
@@ -82,7 +85,7 @@ services:
       - mongo-storage
 
     command:
-      - "/bin/bash"
+      - "/bin/sh"
       - -c
       - |
           chown root:root /txs && \
@@ -147,10 +150,13 @@ services:
   # RPC TESTS
   # test remote producecalls to bitcoind from a python script
   test-rpc-py:
-    build: ./test-rpc-py
+    build:
+      context: ./test-rpc-py
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
     networks: [btc-logger-network]
     command:
-      - "/bin/bash"
+      - "/bin/sh"
       - "-c"
       - "hostname -i && python -u /usr/local/bin/getchaininfo.py"
     environment:
