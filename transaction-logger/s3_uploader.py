@@ -20,26 +20,31 @@ def upload_file_to_s3(aws_s3_bucket, aws_s3_prefix, filename):
     "region_name": os.environ["AWS_REGION_NAME"]
   }
 
+  if any([len(v) == 0 for _, v in aws_s3_creds.items()]):
+    logger.error("AWS S3 credentials contain empty values")
+    return False
+
+  if any([len(v) == 0 for v in [aws_s3_bucket, aws_s3_prefix, filename]]):
+    logger.error("AWS bucket, prefix or filename contains empty values")
+    return False
+
   key_name = os.path.join(aws_s3_prefix,
                           socket.gethostname(),
                           os.path.basename(filename))
 
   # create the boto client
-  try:
-    s3 = boto3.client("s3", **aws_s3_creds)
-  except Exception as e:
-    logger.exception("Could not get boto3.client")
-    return
+  # NB: this will throw a ValueError if the creds are junk
+  s3 = boto3.client("s3", **aws_s3_creds)
 
   logger.info("uploading to '%s'" % (key_name))
 
   # upload the file
-  try:
-    s3.upload_file(Filename=filename,
-                   Bucket=aws_s3_bucket,
-                   Key=key_name)
-  except Exception as e:
-    logger.exception("Could not upload_file()")
+  # NB: this will throw a ValueError is the names are junk
+  s3.upload_file(Filename=filename,
+                 Bucket=aws_s3_bucket,
+                 Key=key_name)
+
+  return True
 
 if __name__ == "__main__":
   logger.info("invoking from cli")

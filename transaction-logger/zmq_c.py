@@ -23,86 +23,66 @@ logger.addHandler(handler)
 required environment variables
 """
 assert "RAWTX_SOURCE_ADDR" in os.environ
-assert "OUTPUT_FILE" in os.environ or "MONGODB_HOST" in os.environ
 
-if "MONGODB_HOST" in os.environ:
+if "MONGO_LOGGER" in os.environ and int(os.environ["MONGO_LOGGER"]) != 0:
+  assert "MONGODB_HOST" in os.environ
   assert "MONGODB_PORT" in os.environ
   assert "BITCOIND_RPC_USER" in os.environ
   assert "BITCOIND_RPC_PASSWORD" in os.environ
   assert "BITCOIND_HOST" in os.environ
   assert "BITCOIND_PORT" in os.environ
 
-def upload_on_write_complete(filename):
-  logger.info("upload_on_write_complete('%s')" % filename)
+if "FILE_LOGGER" in os.environ and int(os.environ["FILE_LOGGER"]) != 0:
+  assert "RAWTX_COUNT_PER_FILE" in os.environ
+  assert "OUTPUT_FILE" in os.environ
 
-  # upload the file to s3
-  try:
-    upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
-                      os.environ["AWS_FILE_PREFIX"],
-                      filename)
-  except Exception as e:
-    # expect this is an invalid endpoint
-    logger.exception(e)
-    return
+if "STDOUT_LOGGER" in os.environ and int(os.environ["STDOUT_LOGGER"]) != 0:
+  assert "STDOUT_LOGGER_PREFIX" in os.environ
 
-  # delete the original file to save disk space if the upload was complete
-  logger.info("removing file '%s' after upload" % filename)
-  os.remove(filename)
-  logger.info("upload complete")
 
 def get_transaction_writers():
   """create writer functions depedning on the env vars
   """
-  rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
-                   os.environ["BITCOIND_RPC_PASSWORD"],
-                   os.environ["BITCOIND_HOST"],
-                   int(os.environ["BITCOIND_PORT"]))
-
   writers = []
 
-  if "MONGODB_HOST" in os.environ:
+  if "MONGO_LOGGER" in os.environ and int(os.environ["MONGO_LOGGER"]) != 0:
     mdb = MongoWriter(host=os.environ["MONGODB_HOST"],
                       port=int(os.environ["MONGODB_PORT"]),
                       user=os.environ["MONGODB_USER"],
                       password=os.environ["MONGODB_PASSWORD"],
                       database=os.environ["MONGODB_DATABASE"],
                       collection=os.environ["MONGODB_COLLECTION"])
-    def unpack_and_write_mdb(hex_string):
-      logger.debug("decoding: '%s'" % hex_string.hex())
-
-      try:
-        decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
-      except Exception as e:
-        logger.exception(e)
-
-      if decoded_hex_string is not None:
-        mdb(decoded_hex_string)
-      else:
-        logger.warning("rpc call returned None (skipping record)")
+    def unpack_and_write_mdb(decoded_hex_string):
+      mdb(decoded_hex_string)
 
     writers.append(unpack_and_write_mdb)
 
-  if "OUTPUT_FILE" in os.environ:
+  if "FILE_LOGGER" in os.environ and int(os.environ["FILE_LOGGER"]) != 0:
     import json
+
+    write_complete_fn = None
+
+    if "AWS_BUCKET_NAME" in os.environ and len(os.environ["AWS_BUCKET_NAME"]) > 0:
+      logger.info("adding s3 upload callback")
+      write_complete_fn=lambda filename: upload_file_to_s3(os.environ["AWS_BUCKET_NAME"],
+                                                           os.environ["AWS_FILE_PREFIX"],
+                                                           filename)
 
     txw = TextWriter(max_count=int(os.environ["RAWTX_COUNT_PER_FILE"]),
                      fname=os.environ["OUTPUT_FILE"],
                      compressed="RAWTX_COMPRESSED_LOGS" in os.environ,
-                     write_complete_fn=upload_on_write_complete if "AWS_BUCKET_NAME" in os.environ else None)
+                     write_complete_fn=write_complete_fn)
 
-    def unpack_and_write_txt(hex_string):
-      logger.debug("decoding: '%s'" % hex_string.hex())
-      try:
-        decoded_hex_string = rpc("decoderawtransaction", hex_string.hex())
-      except Exception as e:
-        logger.exception(e)
-
-      if decoded_hex_string is not None:
-        txw(json.dumps(decoded_hex_string))
-      else:
-        logger.warning("rpc call returned None (skipping record)")
+    def unpack_and_write_txt(decoded_hex_string):
+      txw(json.dumps(decoded_hex_string))
 
     writers.append(unpack_and_write_txt)
+
+  if "STDOUT_LOGGER" in os.environ and int(os.environ["STDOUT_LOGGER"]) != 0:
+    def unpack_and_write_stdout(decoded_hex_string):
+      print(json.dumps(decoded_hex_string))
+
+    writers.append(unpack_and_write_stdout)
 
   if len(writers) < 1:
     logger.warning("No transaction writers created")
@@ -113,6 +93,7 @@ def get_transaction_writers():
 """
 zmq stuff
 """
+# set up the sockets
 context = zmq.Context()
 
 socket = context.socket(zmq.SUB)
@@ -121,9 +102,17 @@ socket.connect(os.environ["RAWTX_SOURCE_ADDR"])
 
 logger.info("recving from '%s'" % os.environ["RAWTX_SOURCE_ADDR"])
 
+# get the RPC object
+rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
+                 os.environ["BITCOIND_RPC_PASSWORD"],
+                 os.environ["BITCOIND_HOST"],
+                 int(os.environ["BITCOIND_PORT"]))
+
+# get the writers
 writers = get_transaction_writers()
 logger.info("using tx writers: '%s'" % str(writers))
 
+# endless loop
 try:
   for tx_idx in itertools.count():
     logger.debug("waiting on idx %i" % tx_idx)
@@ -131,9 +120,21 @@ try:
     logger.debug("got body (len: %i (%i, %i))" % (len(msg), len(msg[0]), len(msg[1])))
     body = msg[1]
 
+    # decode the transaction
+    try:
+      decoded_hex_string = rpc("decoderawtransaction", body.hex())
+    except Exception as e:
+      logger.exception(e)
+      continue
+
+    if decoded_hex_string is None:
+      logger.warning("rpc call returned None (skipping record)")
+      continue
+
+    # pass the decoded json on to the writers
     if len(writers) > 0:
       for writer in writers:
-        writer(body)
+        writer(decoded_hex_string)
     else:
       logger.warning("no writers in use, not logging tx")
 
