@@ -4,7 +4,7 @@ import os
 import logging
 import sys
 import itertools
-from time import clock
+from time import perf_counter as clock
 import gzip
 
 logger = logging.getLogger()
@@ -31,12 +31,16 @@ def getrawtransaction(txids, session=None):
                           "cache-control": "no-cache"})
   session.auth=(os.environ["RPC_USER"], os.environ["RPC_PASS"])
 
-  logger.info("sending %i transactions to '%s'" % (len(txids), url))
+  #logger.info("sending %i transactions to '%s'" % (len(txids), url))
   confirmations = []
+  mempooled = []
+  tx_errors = []
 
   T = clock()
 
   for txid in txids:
+    logger.debug("getrawtransaction %s" % txid)
+
     response = session.post(
       url,
       data=json.dumps({
@@ -54,24 +58,41 @@ def getrawtransaction(txids, session=None):
       # way, which is -1 for confirmations
       # sort of expect a not found to be 404
       err = response.json()
-      logger.error("rpc.status_code: %i (%s)" % (response.status_code,
+      logger.debug("rpc.status_code: %i (%s)" % (response.status_code,
                                                  response.text))
       confirmations.append((-1, -1, err["error"]["code"]))
+      tx_errors.append(txid)
+      continue
     elif response.status_code != 200:
-      logger.error("rpc.status_code: %i (%s)" % (response.status_code,
+      logger.debug("rpc.status_code: %i (%s)" % (response.status_code,
                                                  response.text))
       confirmations.append(err)
-    else:
-      try:
-        txc = response.json()
-        confirmations.append((txc["result"]["confirmations"],
-                              txc["result"]["blockhash"],
-                              "found"))
-      except Exception as e:
-        logger.exception("could not parse json response")
-        confirmations.append(err)
+      tx_errors.append(txid)
+      continue
 
-  logger.info("got %i confirmations in %0.2fs" % (len(confirmations), clock()-T))
+    # process the transaction
+    try:
+      txc = response.json()
+    except Exception as e:
+      logger.exception("could not parse json response")
+      confirmations.append(err)
+      logger.info(json.dumps(response.text))
+      continue
+
+    # check for the confirmations key
+    if "confirmations" in txc["result"]:
+      confirmations.append((txc["result"]["confirmations"],
+                            txc["result"]["blockhash"],
+                            "found"))
+    else:
+      # else tx is in mempool and not confirmed
+      logger.debug("%s mempooled" % txid)
+      confirmations.append((-1, -1, "mem"))
+      mempooled.append(txid)
+
+  logger.info("%i getrawtransaction in %0.2fs (%i mempool, %i errors)" %
+                 (len(confirmations), clock()-T, len(mempooled), len(tx_errors)))
+
   return confirmations
 
 if __name__ == "__main__":
@@ -88,12 +109,14 @@ if __name__ == "__main__":
   # read a file of transaction ids
   with open_fn(sys.argv[1], "rb") as f:
     for iter in itertools.count():
-      logger.info("block %i (%i tx)" % (iter, iter*TX_BLOCK_SIZE))
+      logger.debug("block %i (%i tx)" % (iter, iter*TX_BLOCK_SIZE))
       try:
         txs = [next(f).decode("utf-8").strip() for _ in range(TX_BLOCK_SIZE)]
       except StopIteration:
-        logger.exception("end of file")
-        break
+        pass
+      #  logger.exception("end of file")
+      #  logger.info("eof cnt: %i" % len(txs))
+      #  break
 
       confirmations = getrawtransaction(txs, session=session)
 
