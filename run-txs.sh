@@ -17,6 +17,6 @@ export RPC_PORT=8332
 export RPC_USER=ed
 export RPC_PASS=ed
 export TX_READ_COUNT=2000
-python transaction-confirmer/getrawtransaction.py \
+python3 transaction-confirmer/getrawtransaction.py \
        $LOCAL_DATA_DIR/$TRANSACTION_FILE \
        $LOCAL_DATA_DIR/$TRANSACTION_LABELS
