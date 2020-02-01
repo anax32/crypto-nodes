@@ -5,6 +5,9 @@ echo "using '$LOCAL_DATA_DIR'"
 echo "finding files matching: '$FILE_PATTERN'"
 echo "writing to '$LOCAL_DATA_DIR/$GRAPH_FILE'"
 
+# FIXME: coinbase transactions have no input, so discard
+#        empty vin elements. otherwise we get a 'null' entry
+#        which buggers up the graph search
 EDGE_KEY="\"'\(.vin[].txid) \(.txid)'\"" # to find input txid and txid
 
 # clean previous results

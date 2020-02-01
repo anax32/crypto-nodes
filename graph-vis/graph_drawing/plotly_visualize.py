@@ -29,7 +29,6 @@ def reformat_graph_layout(G, layout):
 
     return positions
 
-
 def visualize_graph(G, node_labels, node_sizes=[], edge_weights=[], layout="graphviz", filename ="netwrokx", title=""):
     positions = reformat_graph_layout(G, layout)
 
@@ -119,8 +118,10 @@ def visualize_graph(G, node_labels, node_sizes=[], edge_weights=[], layout="grap
 
     offpy(fig, filename=filename, auto_open=True, show_link=False)
 
-
-def visualize_graph_3d(G, node_labels, node_sizes, filename, title="3d"):
+def visualize_graph_3d(G, node_labels,
+                          node_sizes,
+                          filename,
+                          title="3d"):
     """draw 3d graph
     """
     edge_trace = Scatter3d(x=[],
@@ -155,21 +156,28 @@ def visualize_graph_3d(G, node_labels, node_sizes, filename, title="3d"):
                        )
     logger.info("created node_trace")
 
-
-    positions = nx.fruchterman_reingold_layout(G, dim=3, k=0.5, iterations=1000)
-    logger.info("created positions data")
+    node_positions = nx.get_node_attributes(G, "pos")
 
 
     for edge in G.edges():
-        x0, y0, z0 = positions[edge[0]]
-        x1, y1, z1 = positions[edge[1]]
+        try:
+          x0, y0, z0 = node_positions[edge[0]]
+          x1, y1, z1 = node_positions[edge[1]]
+        except ValueError:
+          x0, y0, z0 = (*node_positions[edge[0]], 0.0)
+          x1, y1, z1 = (*node_positions[edge[1]], 0.0)
+
         edge_trace['x'] += [x0, x1, None]
         edge_trace['y'] += [y0, y1, None]
         edge_trace['z'] += [z0, z1, None]
 
 
     for node in G.nodes():
-        x, y, z = positions[node]
+        try:
+          x, y, z = node_positions[node]
+        except ValueError:
+          x, y, z = (*node_positions[node], 0.0)
+
         node_trace['x'].append(x)
         node_trace['y'].append(y)
         node_trace['z'].append(z)
@@ -181,6 +189,8 @@ def visualize_graph_3d(G, node_labels, node_sizes, filename, title="3d"):
     if node_sizes:
         for size in node_sizes:
             node_trace['marker']['size'].append(size)
+    else:
+        node_trace['marker']['size'] = [2]*len(G.nodes())
 
     if node_labels:
         for node in node_labels:

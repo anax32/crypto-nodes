@@ -12,5 +12,5 @@ def from_text():
       try:
         inp, oup = l.split()
       except ValueError:
-        break
+        continue
       yield inp, oup
