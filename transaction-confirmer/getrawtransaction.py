@@ -7,6 +7,8 @@ import itertools
 from time import perf_counter as clock
 import gzip
 
+from bitcoinrpc import create_rpc_callback
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -18,18 +20,11 @@ logger.addHandler(handler)
 
 logger.info(__name__)
 
-def getrawtransaction(txids, session=None):
+
+def getrawtransaction(txids, rpc_callback):
   """pass a list of txids in to get a list of confimration counts
   """
-  url = "http://%s:%s" % (os.environ["RPC_HOST"], os.environ["RPC_PORT"])
   err = (-1, -1, "-1") # error marker
-
-  if session is None:
-    session = requests.Session()
-
-  session.headers.update({"content-type": "text/plain",
-                          "cache-control": "no-cache"})
-  session.auth=(os.environ["RPC_USER"], os.environ["RPC_PASS"])
 
   #logger.info("sending %i transactions to '%s'" % (len(txids), url))
   confirmations = []
@@ -41,14 +36,7 @@ def getrawtransaction(txids, session=None):
   for txid in txids:
     logger.debug("getrawtransaction %s" % txid)
 
-    response = session.post(
-      url,
-      data=json.dumps({
-        "jsonrpc": "2.0",
-        "method": "getrawtransaction",
-        "params": [txid, True],
-        "id": "get_confirmation_count"
-      }))
+    response = rpc_callback("", "getrawtransaction", [txid, True])
 
     if response.status_code == 500:
       # 500 indicates the tid was not found, which may be good for
@@ -99,12 +87,14 @@ if __name__ == "__main__":
   TX_BLOCK_SIZE = int(os.environ["TX_READ_COUNT"])
   iter = 0
 
-  session = requests.Session()
+  rpc_callback = create_rpc_callback()
 
   if sys.argv[1].endswith(".gz"):
     open_fn = gzip.open
   else:
     open_fn = open
+
+  stop_iters = False
 
   # read a file of transaction ids
   with open_fn(sys.argv[1], "rb") as f:
@@ -113,14 +103,17 @@ if __name__ == "__main__":
       try:
         txs = [next(f).decode("utf-8").strip() for _ in range(TX_BLOCK_SIZE)]
       except StopIteration:
-        pass
+        stop_iters = True
       #  logger.exception("end of file")
       #  logger.info("eof cnt: %i" % len(txs))
       #  break
 
-      confirmations = getrawtransaction(txs, session=session)
+      confirmations = getrawtransaction(txs, rpc_callback)
 
       with open_fn(sys.argv[2], "ab") as r:
         for txid, confirmation in zip(txs, confirmations):
           output = "%s %s %s\n" % (txid, confirmation[0], confirmation[1])
           r.write(output.encode())
+
+      if stop_iters is True:
+        break
