@@ -1,16 +1,8 @@
 version: "3"
 
-networks:
-  # network to contain the services
-  # NB: the mask is important for bitcoind permissions
-  default:
-    external:
-      name: btc-logger-network
-
 services:
   elasticsearch:
     image: elasticsearch:7.5.2
-    networks: [btc-logger-network]
     environment:
       - discovery.type=single-node
     ports:
@@ -22,7 +14,6 @@ services:
       context: logstash
     depends_on:
       - elasticsearch
-    networks: [btc-logger-network]
     environment:
       LOGSTASH_CONFIG_TEMPLATE: /usr/share/logstash/logstash.conf.template
       LOGSTASH_CONFIG: /usr/share/logstash/logstash.conf
@@ -37,7 +28,6 @@ services:
 
   kibana:
     image: kibana:7.5.2
-    networks: [btc-logger-network]
     depends_on:
       - elasticsearch
     ports:
