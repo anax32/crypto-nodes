@@ -22,15 +22,12 @@ export TX_READ_COUNT=2000
 # list of addresses
 gzip -d $LOCAL_DATA_DIR/$COUNT_FILE -c | tr -s ' ' | cut -d' ' -f3 > database/addresses.csv
 
-# list of transaction
-gzip -d $LOCAL_DATA_DIR/$TRANSACTION_FILE -c > database/transactions.csv
-
 # address to transaction mapping
-gzip -d $LOCAL_DATA_DIR/$COUNT_FILE -c > database/address-to-transaction.csv
+gzip -d $LOCAL_DATA_DIR/$ADDRESS_FILE -c > database/address-to-transaction.csv
 
-# transaction to block mapping
-python3 transaction-confirmer/getrawtransaction.py \
-       $LOCAL_DATA_DIR/$TRANSACTION_FILE \
-       database/transaction-to-block.csv
+# transaction info
+python3 transaction-confirmer/gettransactioninfo.py \
+       $LOCAL_DATA_DIR/$TRANSACTION_FILE > database/transactions.csv
 
-
+# transaction-to-block mapping
+cut -d' ' -f1,4 database/transactions.csv > database/transaction-to-block.csv
