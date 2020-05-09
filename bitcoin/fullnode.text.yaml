@@ -1,0 +1,116 @@
+version: "3"
+
+networks:
+  # network to contain the services
+  # NB: the mask is important for bitcoind permissions
+  btc-logger-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: $BTC_NETMASK
+
+services:
+  # BITCOIND FULL NODE
+  bitcoind:
+    build: ./bitcoind-from-repo
+    networks: [btc-logger-network]
+    volumes: 
+      - $DATA_DIR/blks:/block-data
+    ports:
+     - $BITCOIND_ZMQ_PORT:$BITCOIND_ZMQ_PORT
+     - $BITCOIND_RPC_PORT:$BITCOIND_RPC_PORT
+
+    logging:
+      options:
+        max-file: "4"
+        max-size: "100k"
+
+    #NB: this command does chown as a hack to write on the
+    #    mapped volumes, would be better to use docker volumes
+    #    but how to map a local dir to a docker volume?
+    command:
+      - "/bin/bash"
+      - -c
+      - |
+          chown root:root /block-data && \
+          bitcoind \
+            -datadir=/block-data \
+            -txindex=1 \
+            -zmqpubrawtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+            -zmqpubhashtx=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+            -server \
+            -rpcuser=$BITCOIND_RPC_USER \
+            -rpcpassword=$BITCOIND_RPC_PASS \
+            -rpcallowip=$BTC_NETMASK \
+            -rpcbind=0.0.0.0:$BITCOIND_RPC_PORT \
+            -rpcport=$BITCOIND_RPC_PORT \
+            -maxmempool=$BITCOIND_MEMPOOL_SIZE \
+            -dbcache=$BITCOIND_DBCACHE_SIZE \
+            -par=1 \
+            -rpcthreads=1
+
+#            -reindex \
+
+#            -zmqpubhashblock=tcp://0.0.0.0:$BITCOIND_ZMQ_PORT \
+#            -debug=rpc \
+#            -debug=zmq \
+#            -debug=net \
+#            -debug=http
+
+  # TRANSACTION LOGGER
+  txlog:
+    build:
+      context: ./transaction-logger
+      args:
+        BASE_IMAGE: $PYTHON_ZMQ_IMAGE
+
+    networks: [btc-logger-network]
+    volumes:
+      - $DATA_DIR/unc:/txs
+    environment:
+      MONGO_LOGGER: $LOG_TO_MONGO
+      RAWTX_SOURCE_ADDR: tcp://bitcoind:$BITCOIND_ZMQ_PORT
+      BITCOIND_HOST: bitcoind
+      BITCOIND_PORT: $BITCOIND_RPC_PORT
+      BITCOIND_RPC_USER: $BITCOIND_RPC_USER
+      BITCOIND_RPC_PASSWORD: $BITCOIND_RPC_PASS
+      FILE_LOGGER: $LOG_TO_FILE
+      OUTPUT_FILE: /txs/txc
+      RAWTX_COMPRESSED_LOGS: 1
+      RAWTX_COUNT_PER_FILE: $TXLOG_TXT_PER_FILE
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_REGION_NAME: $AWS_REGION_NAME
+      AWS_BUCKET_NAME: $AWS_BUCKET_NAME
+      AWS_FILE_PREFIX: $AWS_TX_PREFIX
+      STDOUT_LOGGER: $LOG_TO_STDOUT
+      STDOUT_LOGGER_PREFIX: $STDOUT_LOGGER_PREFIX
+ 
+    logging:
+#      driver: syslog
+      options:
+        max-file: "2"
+        max-size: "50k"
+#        syslog-address: tcp://127.0.0.1:5000
+
+    depends_on:
+      - bitcoind
+
+    command:
+      - "/bin/sh"
+      - -c
+      - |
+          env && \
+          chown root:root /txs && \
+          sleep 10 && \
+          python3 -u /usr/local/bin/zmq_c.py
+
+#  logstash:
+#    image: logstash:7.5.2
+#    volumes:
+#      - $DATA_DIR/logst/:/usr/share/logstash/data/
+#
+#    ports:
+#      - 5000:5000
+#
+#    command: logstash -e "input { syslog { port => 5000 type => 'docker' codec => 'json' } } filter { json { source => 'message' } } output { stdout {} file { path => '/usr/share/logstash/data/log.log.gz' gzip => true } }"
