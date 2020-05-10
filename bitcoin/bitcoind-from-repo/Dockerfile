@@ -3,11 +3,18 @@ FROM ubuntu:16.04
 
 # install from the bitcoin repo
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    apt-add-repository ppa:bitcoin/bitcoin && \
-    apt-get update && \
-    apt-get install -y bitcoind && \
+    apt-get install -y \
+      wget \
+    && \
     rm -rf /var/lib/apt/lists/*
+
+
+RUN mkdir install && \
+    cd install && \
+    wget https://bitcoincore.org/bin/bitcoin-core-0.19.1/bitcoin-0.19.1-x86_64-linux-gnu.tar.gz && \
+    tar xvf *.tar.gz && \
+    cp -R */*/ /
+
 
 # by default we expect the rpc auth cookie in this dir
 RUN mkdir -p /block-data
