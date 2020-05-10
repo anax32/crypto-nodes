@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bitcoin
+  labels:
+    app: bitcoin
+spec:
+  ports:
+  - port: 8332
+    name: bitcoin-peers
+  clusterIP: None
+  selector:
+    app: bitcoin
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bitcoin
+spec:
+  selector:
+    matchLabels:
+      app: bitcoin
+  serviceName: "bitcoin"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: bitcoin
+    spec:
+      terminationGracePeriodSeconds: 10
+
+      containers:
+        - name: bitcoin
+          image: crypto-nodes.bitcoin
+          imagePullPolicy: Never
+          env:
+            - name: BLOCK_DATA_DIR
+              value: "/block-data"
+            - name: BITCOIND_RPC_USER
+              value: "r00tm3"
+            - name: BITCOIND_RPC_PASS
+              value: "r00tm3"
+            - name: BITCOIND_ZMQ_PORT
+              value: "28332"
+            - name: BTC_NETMASK
+              value: "182.38.0.0/16"
+            - name: BITCOIND_RPC_PORT
+              value: "8332"
+            - name: BITCOIND_MEMPOOL_SIZE
+              value: "1200"
+            - name: BITCOIND_DBCACHE_SIZE
+              value: "800"
+
+          workingDir: /app
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+                chown root:root /block-data && \
+                bitcoind \
+                  -datadir=$$BLOCK_DATA_DIR \
+                  -dbcache=$$BITCOIND_DB_CACHE_SIZE \
+                  -txindex=1 \
+                  -reindex \
+                  -zmqpubrawtx=tcp://0.0.0.0:$$BITCOIND_ZMQ_PORT \
+                  -zmqpubhashblock=tcp://0.0.0.0:$$BITCOIND_ZMQ_PORT \
+                  -zmqpubhashtx=tcp://0.0.0.0:$$BITCOIND_ZMQ_PORT \
+                  -server \
+                  -rpcuser=$BITCOIND_RPC_USER \
+                  -rpcpassword=$BITCOIND_RPC_PASS \
+                  -rpcallowip=$BTC_NETMASK \
+                  -rpcbind=0.0.0.0:$BITCOIND_RPC_PORT \
+                  -rpcport=$BITCOIND_RPC_PORT
+
+          volumeMounts:
+            - name: bitcoin-blockchain-volume
+              mountPath: /block-data
+
+  volumeClaimTemplates:
+  - metadata:
+      name: bitcoin-blockchain-volume
+    spec:
+      accessModes: 
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
