@@ -53,7 +53,7 @@ block chain data is stored in the container `/block-data` dir
 
 `bitcoin.conf` configuration script is loaded from the `/config/bitcoin.conf` container directory.
 Create a local `bitcoin.conf` and mount over this directory to provide your own config.
-Default config is pulled from the [bitcoin github repo](https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf] at line 108 of the `Dockerfile`.
+Default config is pulled from the [bitcoin github repo](https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf) at line 108 of the `Dockerfile`.
 
 # Disclaimer
 
