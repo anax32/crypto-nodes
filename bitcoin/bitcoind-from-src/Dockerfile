@@ -1,72 +1,99 @@
-FROM debian:buster-slim AS build-env
-
-ARG BOOST_VERSION=1.67
+# github release tag
 ARG BITCOIN_CORE_TAG=v0.18.0
 
-RUN apt-get update && \
-    apt-get install -y \
-              wget unzip \
-              build-essential \
-              autoconf \
-              libssl-dev \
-              libboost$BOOST_VERISON-dev \
-              libboost-chrono$BOOST_VERISON-dev \
-              libboost-filesystem$BOOST_VERSION-dev \
-              libboost-program-options$BOOST_VERSION-dev \
-              libboost-system$BOOST_VERSION-dev \
-              libboost-test$BOOST_VERSION-dev \
-              libboost-thread$BOOST_VERSION-dev \
-              libtool \
-              pkg-config \
-              libevent-dev \
-              git \
-              bsdmainutils \
-              libzmq3-dev \
-              tree
+# boost dev versions don't have the trailing .0, so we add
+# the MINOR_VERSION via env subs
+ARG BOOST_VERSION=1.67
+ARG BOOST_DEV_SUFFIX=-dev
+ARG BOOST_RELEASE_SUFFIX=.0
 
-RUN mkdir /home/btc/
-RUN git clone \
-      -b $BITCOIN_CORE_TAG \
-      https://github.com/bitcoin/bitcoin.git \
-      /home/btc/bitcoin
+#
+# build bitcoind from github.com source
+#   ~2Gb, ~30 mins
+#   see: https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md
+#
+FROM python:3 AS build-stage
 
-WORKDIR /home/btc/bitcoin/
-RUN ./autogen.sh
-RUN ./configure \
-      CPPFLAGS="-I/usr/local/BerkeleyDB.4.8/include -O2" \
-      LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib" \
-      --without-gui
-
-RUN make && make install
-
-#ADD https://bitcoin.org/bin/bitcoin-core-0.18.0/bitcoin-0.18.0-x86_64-linux-gnu.tar.gz .
-#RUN tar -xvf bitcoin-0.18.0-x86_64-linux-gnu.tar.gz && \
-#    cp /home/btc/bitcoin-0.18.0/bin/bitcoin-cli /usr/local/bin && \
-#    cp /home/btc/bitcoin-0.18.0/bin/bitcoind /usr/local/bin && \
-#    rm -drf bitcoin-0.18.0
-
-# add the default bitcoin.conf
-ADD https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf \
-    /home/btc/bitcoin.conf
-
-# build the deployable
-FROM debian:buster-slim
-
-ARG BOOST_VERSION=1.67.0
+ARG BITCOIN_CORE_TAG
+ARG BOOST_VERSION
+ARG BOOST_DEV_SUFFIX
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-              libssl1.1 \
-              libboost-chrono$BOOST_VERSION \
-              libboost-filesystem$BOOST_VERSION \
-              libboost-thread$BOOST_VERSION \
-              libevent-2.1-6 \
-              libevent-pthreads-2.1-6 \
-    && \
-    rm -rf /var/lib/apt/lists/*
+              bsdmainutils \
+              build-essential \
+              libevent-dev \
+              libboost-system$BOOST_VERSION$BOOST_DEV_SUFFIX \
+              libboost-filesystem$BOOST_VERSION$BOOST_DEV_SUFFIX \
+              libboost-test$BOOST_VERSION$BOOST_DEV_SUFFIX \
+              libboost-thread$BOOST_VERSION$BOOST_DEV_SUFFIX
 
-COPY --from=build-env /usr/local/bin/bitcoind /usr/local/bin/bitcoind
-COPY --from=build-env /usr/local/bin/bitcoin-cli /usr/local/bin/bitcoin-cli
+# zmq interface dependencies
+RUN apt-get install -y --no-install-recommends \
+              libzmq3-dev
+
+# gui dependencies
+RUN apt-get install -y --no-install-recommends \
+              libqrencode-dev \
+              libqt5core5a \
+              libqt5dbus5 \
+              libqt5gui5 \
+              qttools5-dev \
+              qttools5-dev-tools
+
+# clone repo
+ENV PROJECT_DIR=/btc/bitcoin
+RUN mkdir /btc/
+
+RUN git clone \
+      --depth 1 \
+      -b $BITCOIN_CORE_TAG \
+      https://github.com/bitcoin/bitcoin.git $PROJECT_DIR
+
+# build
+WORKDIR $PROJECT_DIR
+
+#
+# configure the build environment with leveldb for a wallet
+# see: https://github.com/bitcoin/bitcoin/blob/master/contrib/install_db4.sh
+#
+# build with low-mem for docker daemon
+# see: https://github.com/bitcoin/bitcoin/blob/master/doc/build-unix.md#memory-requirements
+RUN ./contrib/install_db4.sh $(pwd) && \
+    export BDB_PREFIX="$(pwd)/db4" && \
+    ./autogen.sh && \
+    ./configure \
+        BDB_LIBS="-L${BDB_PREFIX}/lib \-ldb_cxx-4.8" \
+        BDB_CFLAGS="-I${BDB_PREFIX}/include" \
+        CFLAGS="-O2" \
+        CXXFLAGS="-O2 -I/usr/local/BerkeleyDB.4.8/include" \
+        LDFLAGS="-L/usr/local/BerkeleyDB.4.8/lib"
+##      --without-gui
+
+RUN make && make install
+
+# build the deployable image
+# ~120Mb, ~1 min
+FROM debian:buster-slim AS fullnode
+
+ARG BITCOIN_CORE_TAG
+ARG BOOST_VERSION
+ARG BOOST_RELEASE_SUFFIX
+
+# libzmq5 only need for zmq server
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+              libboost-system$BOOST_VERSION$BOOST_RELEASE_SUFFIX \
+              libboost-filesystem$BOOST_VERSION$BOOST_RELEASE_SUFFIX \
+              libboost-thread$BOOST_VERSION$BOOST_RELEASE_SUFFIX \
+              libboost-chrono$BOOST_VERSION$BOOST_RELEASE_SUFFIX \
+              libssl1.1 \
+              libevent-pthreads-2.1-6 \
+              libevent-2.1-6 \
+              libzmq5
+
+COPY --from=build-stage /usr/local/bin/bitcoind /usr/local/bin/bitcoind
+COPY --from=build-stage /usr/local/bin/bitcoin-cli /usr/local/bin/bitcoin-cli
 
 # by default we expect the rpc auth cookie in this dir
 RUN mkdir -p /block-data
@@ -74,15 +101,12 @@ RUN mkdir -p /block-data
 # bitcoin.conf can be mounted over
 # for a generator, see:
 #   https://jlopp.github.io/bitcoin-core-config-generator/
-#RUN  mkdir -p /config
-#COPY --from=build-env /home/btc/bitcoin.conf /config/bitcoin.conf
+RUN  mkdir -p /config
 
-# install from the bitcoin repo
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    apt-add-repository ppa:bitcoin/bitcoin && \
-    apt-get update && \
-    apt-get install -y bitcoind
+# add the default bitcoin.conf
+# mount over /config to provide your own node config
+ADD https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/examples/bitcoin.conf \
+    /config/bitcoin.conf
 
 # default run command
 CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf"]
