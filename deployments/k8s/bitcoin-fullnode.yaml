@@ -21,7 +21,7 @@ spec:
     matchLabels:
       app: bitcoin
   serviceName: "bitcoin"
-  replicas: 3
+  replicas: 1
   template:
     metadata:
       labels:
