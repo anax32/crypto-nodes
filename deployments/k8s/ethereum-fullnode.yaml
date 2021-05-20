@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ethereum
+  labels:
+    app: ethereum
+spec:
+  ports:
+  - port: 8546
+    name: ethereum
+  clusterIP: None
+  selector:
+    app: ethereum
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ethereum
+spec:
+  selector:
+    matchLabels:
+      app: ethereum
+  serviceName: "ethereum"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ethereum
+    spec:
+      terminationGracePeriodSeconds: 15
+
+      containers:
+        - name: ethereum
+          image: crypto-nodes.ethereum
+          imagePullPolicy: Never
+          env:
+            - name: BLOCK_DATA_DIR
+              value: "/block-data"
+
+          args: ["--ropsten", "--ipcdisable", "--nousb", "--ws", "--ws.addr=0.0.0.0", "--ws.origins='*'", "--datadir=/block-data"]
+
+          volumeMounts:
+            - name: ethereum-blockchain-volume
+              mountPath: /block-data
+
+  volumeClaimTemplates:
+  - metadata:
+      name: ethereum-blockchain-volume
+    spec:
+      accessModes: 
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
