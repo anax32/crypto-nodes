@@ -1,0 +1,29 @@
+version: "3"
+
+networks:
+  # network to contain the services
+  # NB: the mask is important for bitcoind permissions
+  ethereum-node-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: $ETH_NETMASK
+
+services:
+  geth:
+    image: ethereum/client-go
+    networks: [ethereum-node-network]
+    volumes: 
+      - $ETH_DATADIR/blks:/block-data
+    ports:
+     - $ETH_CLIENT_PORT:8546
+
+    logging:
+      options:
+        max-file: "5"
+        max-size: "500k"
+
+    #NB: this command does chown as a hack to write on the
+    #    mapped volumes, would be better to use docker volumes
+    #    but how to map a local dir to a docker volume?
+    command: "--ropsten --ipcdisable --nousb --ws --ws.addr 0.0.0.0  --ws.origins='*' --datadir /block-data"
