@@ -25,6 +25,8 @@ from ubuntu as host
 run apt-get update; \
     apt-get install -q -y --no-install-recommends \
       libssl1.1 \
-      hwloc
+      hwloc \
+      msr-tools \
+      kmod
 
 copy --from=xmrig /xmrig/build/xmrig /usr/bin
