@@ -14,7 +14,7 @@ docker run \
   -e WORKER_NAME=work09 \
   --restart=always \
   --cpus="0.5" \
-  anax32/crypto-nodes.ethmine
+  anax32/crypto-nodes.ethereum:mine-latest
 
 #docker run \
 #  -d \
@@ -49,7 +49,7 @@ docker run \
   --name gpu-monitor \
   --gpus all \
   -it \
-  nvmon
+  anax32/nvidia-log
 
 # docker logs -f ethminer
 # docker logs -f xmrig
