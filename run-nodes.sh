@@ -46,7 +46,8 @@ docker run \
   -e XMR_POOL_ADDR=gulf.moneroocean.stream:20128 \
   -e XMR_ADDR=4AJin9Rwi4KE93rgyPKnds569UeXKgxdW7G9vvKUQCKrPYzHQMQmGrFezLq5GuX3Pfjo1wkiHu3jmGRUhRRufjYPBQPtKaH \
   -e WORKER_NAME=work01 \
-  anax32/crypto-nodes.xmr:cpu-latest
+  anax32/crypto-nodes.xmr:cpu-latest \
+  /bin/bash -c 'xmrig --donate-level 2 -o ${XMR_POOL_ADDR} -u ${XMR_ADDR} -k --tls -p ${WORKER_NAME}'
 
 #
 # monitoring
