@@ -11,9 +11,9 @@ from bitcoindrpc import BitcoinRPC
 from s3_uploader import upload_file_to_s3
 
 logger = logging.getLogger()
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 formatter = logging.Formatter("%(asctime)s:%(name)s:%(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -102,40 +102,43 @@ if __name__ == "__main__":
   logger.info("recving from '%s'" % os.environ["RAWTX_SOURCE_ADDR"])
 
   # get the RPC object
-  rp c = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
-                    os.environ["BITCOIND_RPC_PASSWORD"],
-                    os.environ["BITCOIND_HOST"],
-                    int(os.environ["BITCOIND_PORT"]))
+  rpc = BitcoinRPC(os.environ["BITCOIND_RPC_USER"],
+                   os.environ["BITCOIND_RPC_PASSWORD"],
+                   os.environ["BITCOIND_HOST"],
+                   int(os.environ["BITCOIND_PORT"]))
 
   # get the writers
   writers = get_transaction_writers()
   logger.info("using tx writers: '%s'" % str(writers))
 
+  # get the topic handlers
+  topic_handlers = {
+    b"rawtx": lambda x: rpc("decoderawtransaction", x)
+  }
+
   # endless loop
   try:
-    for tx_idx in itertools.count():
-      logger.debug("waiting on idx %i" % tx_idx)
-      msg = socket.recv_multipart()
-      logger.debug("got body (len: %i (%i, %i))" % (len(msg), len(msg[0]), len(msg[1])))
-      body = msg[1]
+    while True:
+      topic, body, sequence = socket.recv_multipart()
+      logger.debug("[%s] %i bytes", topic.decode(), len(body))
 
-      # decode the transaction
+      # decode the data using the handlers
       try:
-        decoded_hex_string = rpc("decoderawtransaction", body.hex())
+        log_data = topic_handlers[topic](body.hex())
       except Exception as e:
         logger.exception(e)
         continue
 
-      if decoded_hex_string is None:
+      if log_data is None:
         logger.warning("rpc call returned None (skipping record)")
         continue
 
       # pass the decoded json on to the writers
       if len(writers) > 0:
         for writer in writers:
-          writer(decoded_hex_string)
+          writer(log_data)
       else:
-        logger.warning("no writers in use, not logging tx")
+        logger.warning("no writers in use, not logging")
 
   except KeyboardInterrupt:
     logger.info("exiting for KeyboardInterrupt")
