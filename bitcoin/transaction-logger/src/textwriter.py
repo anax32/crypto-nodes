@@ -7,7 +7,6 @@ import json
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def make_transaction_filename(count, max_count, fname_stub):
@@ -17,10 +16,12 @@ def make_transaction_filename(count, max_count, fname_stub):
   logger.info("transaction batch: %i" % idx)
   return "%s_%08i.log" % (fname_stub, idx)
 
+
 def rotate_transaction_file(count, max_count):
   """return true if we should create a new transaction file
   """
   return count % max_count == 0
+
 
 def create_transaction_file_handle(count, max_count, fname_stub, txid=None):
   if txid is not None:
