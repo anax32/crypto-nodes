@@ -23,6 +23,10 @@ class BitcoinRPC(object):
     self.password = password
 
   def __call__(self, method, *params):
+    payload = {"method": method,
+               "params": list(params),
+               "jsonrpc": "2.0"}
+
     try:
       resp = self.session.post(self.url,
                                headers=self.headers,
