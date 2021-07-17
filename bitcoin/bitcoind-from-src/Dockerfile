@@ -90,7 +90,8 @@ RUN apt-get update && \
               libssl1.1 \
               libevent-pthreads-2.1-6 \
               libevent-2.1-6 \
-              libzmq5
+              libzmq5 \
+              sqlite3
 
 COPY --from=build-stage /usr/local/bin/bitcoind /usr/local/bin/bitcoind
 COPY --from=build-stage /usr/local/bin/bitcoin-cli /usr/local/bin/bitcoin-cli
