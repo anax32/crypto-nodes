@@ -1,10 +1,14 @@
+"""Simple wrapper to send json rpc calls to the bitcoind endpoint
+
+NB: this defaults to the 18332 port (bitcoind default is 8332)
+"""
 import logging
 import json
 
 import requests
 
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class BitcoinRPC(object):
@@ -19,15 +23,10 @@ class BitcoinRPC(object):
     self.password = password
 
   def __call__(self, method, *params):
-    payload = json.dumps({"method": method,
-                          "params": list(params),
-                          "jsonrpc": "2.0"})
-    logger.debug("sending rpc: '%s'" % payload)
-
     try:
       resp = self.session.post(self.url,
                                headers=self.headers,
-                               data=payload,
+                               json=payload,
                                auth=(self.user, self.password))
     except Exception as e:
       logger.exception(e)

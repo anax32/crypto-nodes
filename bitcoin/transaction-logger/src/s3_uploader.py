@@ -6,7 +6,6 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def upload_file_to_s3(aws_s3_bucket, aws_s3_prefix, filename):
