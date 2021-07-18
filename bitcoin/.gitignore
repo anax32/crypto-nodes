@@ -1,3 +1,5 @@
 *.pyc
 *.log
 .env
+.terraform
+*.tfvars
