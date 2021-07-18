@@ -33,3 +33,47 @@ have a test dataset with which to work
 
 # process.yaml
 process the transaction data in a mongodb database to produce graphs
+
+
+# usage
+
++ build the bitcoind container
+    + run the fullnode
+    + set the bitcoind logger output
+```bash
+docker exec \
+  -it \
+  btc-node \
+  bitcoin-cli \
+    -rpcuser=$RPCU \
+    -rpcpassword=$RPCP \
+    logging "[\"all\"]" "[\"http\", \"bench\", \"tor\", \"qt\", \"leveldb\", \"net\", \"addrman\", \"selectcoins\", \"rand\", \"prune\", \"libevent\", \"walletdb\"]"
+```
+
++ build and run the `transaction-logger`
+
+```bash
+docker build \
+  -t anax32/btc-tx-log \
+  .
+
+docker run \
+  -d \
+  --rm \
+  -e FILE_LOGGER=1 \
+  -e RAWTX_SOURCE_ADDR="tcp://127.0.0.1:28832" \
+  -e RAWTX_COUNT_PER_FILE=20000 \
+  -e RAWTX_COMPRESSED_LOGS=1 \
+  -e OUTPUT_FILE=/data/mempool \
+  -e BITCOIND_RPC_USER=${RPC_USERNAME} \
+  -e BITCOIND_RPC_PASSWORD=${RPC_PASSWORD} \
+  -e BITCOIND_HOST=127.0.0.1 \
+  -e BITCOIND_PORT=8332 \
+  -e LOG_LEVEL=DEBUG \
+  --network=host \
+  -v $(pwd)/data:/data \
+  --log-opt max-size=5m \
+  --log-opt max-file=5 \
+  --name btc-tx-logger \
+  anax32/btc-tx-log
+```
