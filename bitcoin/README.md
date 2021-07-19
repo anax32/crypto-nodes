@@ -39,6 +39,18 @@ process the transaction data in a mongodb database to produce graphs
 
 + build the bitcoind container
     + run the fullnode
+```bash
+docker run \
+  -d \
+  --rm \
+  --network=host \
+  --log-opt max-size=5m \
+  --log-opt max-file=5 \
+  -v $(pwd)/data:/block-data \
+  -v $(pwd)/config:/config \
+  --name btc-node \
+  anax32/bitcoind
+```
     + set the bitcoind logger output
 ```bash
 docker exec \
