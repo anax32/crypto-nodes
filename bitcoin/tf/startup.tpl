@@ -40,7 +40,6 @@ sleep 5
 
 # setup the logging for the node container
 docker exec \
-  -it \
   btc-node \
   bitcoin-cli \
     -rpcuser=${rpc_username} \
@@ -53,7 +52,7 @@ docker run \
   --rm \
   -e FILE_LOGGER=1 \
   -e RAWTX_SOURCE_ADDR="tcp://127.0.0.1:28832" \
-  -e RAWTX_COUNT_PER_FILE=200 \
+  -e RAWTX_COUNT_PER_FILE=${tx_count} \
   -e RAWTX_COMPRESSED_LOGS=1 \
   -e OUTPUT_FILE=/data/mempool \
   -e AWS_BUCKET_NAME=${aws_bucket_name} \

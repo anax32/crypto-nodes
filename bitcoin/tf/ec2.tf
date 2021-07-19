@@ -61,6 +61,7 @@ module "ec2" {
     aws_bucket_name = aws_s3_bucket.mempool.id
     rpc_username = random_string.rpc_username.result
     rpc_password = random_password.rpc_password.result
+    tx_count = 500000
   })
 
   tags = merge(var.project_tags)
