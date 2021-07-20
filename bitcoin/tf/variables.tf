@@ -8,8 +8,8 @@ variable "btc_node_image_tag" { type = string }
 variable "btc_logger_image_tag" { type = string }
 
 variable "availability_zones" {
-  type = list(string)
-  default =["eu-west-2c"]
+  type = set(string)
+  default = ["eu-west-2c"]
 }
 
 variable "project_tags" {

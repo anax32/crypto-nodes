@@ -35,6 +35,8 @@ resource "random_password" "rpc_password" {
 }
 
 module "ec2" {
+  for_each = var.availability_zones
+
   source                 = "terraform-aws-modules/ec2-instance/aws"
   version                = "~> 2.0"
 
@@ -45,23 +47,31 @@ module "ec2" {
   instance_type          = "t3.small"
   key_name               = aws_key_pair.ec2.key_name
   monitoring             = true
-  vpc_security_group_ids = [module.sg.this_security_group_id]
-  subnet_ids             = module.vpc.public_subnets
+  vpc_security_group_ids = [module.sg[each.key].this_security_group_id]
+  subnet_ids             = module.vpc[each.key].public_subnets
 
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
   associate_public_ip_address = true
 
-  user_data              = templatefile("startup.tpl", {
+  root_block_device = [
+    {
+      volume_type = "standard"
+      volume_size = 32
+    },
+  ]
+
+  user_data = templatefile("startup.tpl", {
     node_repository = data.aws_ecr_repository.btc_node.repository_url
     node_tag = data.aws_ecr_image.btc_node.image_tag
     logger_repository = data.aws_ecr_repository.btc_logger.repository_url
     logger_tag = data.aws_ecr_image.btc_logger.image_tag
     aws_region = var.aws_region
     aws_bucket_name = aws_s3_bucket.mempool.id
+    aws_prefix = each.key
     rpc_username = random_string.rpc_username.result
     rpc_password = random_password.rpc_password.result
-    tx_count = 500000
+    tx_count = 100000
   })
 
   tags = merge(var.project_tags)
@@ -72,9 +82,13 @@ output "sshkey" {
 }
 
 output "ec2ip" {
-  value = module.ec2.public_ip
+  value = {for k, v in module.ec2 : k => v.public_ip}
 }
 
 output "rpc_username" {
   value = random_string.rpc_username.result
+}
+
+output "rpc_password" {
+  value = random_password.rpc_password.result
 }
