@@ -13,15 +13,24 @@ def upload_file_to_s3(aws_s3_bucket, aws_s3_prefix, filename):
      and upload to s3
   """
   # get the credentials
-  aws_s3_creds = {
-    "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
-    "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
-    "region_name": os.environ["AWS_REGION_NAME"]
-  }
+  if "AWS_ACCESS_KEY_ID" in os.environ:
+    aws_s3_creds = {
+      "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
+      "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
+      "region_name": os.environ["AWS_REGION_NAME"]
+    }
 
-  if any([len(v) == 0 for _, v in aws_s3_creds.items()]):
-    logger.error("AWS S3 credentials contain empty values")
-    return False
+    if any([len(v) == 0 for _, v in aws_s3_creds.items()]):
+      logger.error("AWS S3 credentials contain empty values")
+      return False
+
+    # create the boto client
+    # NB: this will throw a ValueError if the creds are junk
+    s3 = boto3.client("s3", **aws_s3_creds)
+  else:
+    logger.info("using aws creds from host")
+    # create the boto client
+    s3 = boto3.client("s3")
 
   if any([len(v) == 0 for v in [aws_s3_bucket, aws_s3_prefix, filename]]):
     logger.error("AWS bucket, prefix or filename contains empty values")
@@ -31,9 +40,6 @@ def upload_file_to_s3(aws_s3_bucket, aws_s3_prefix, filename):
                           socket.gethostname(),
                           os.path.basename(filename))
 
-  # create the boto client
-  # NB: this will throw a ValueError if the creds are junk
-  s3 = boto3.client("s3", **aws_s3_creds)
 
   logger.info("uploading to '%s'" % (key_name))
 
