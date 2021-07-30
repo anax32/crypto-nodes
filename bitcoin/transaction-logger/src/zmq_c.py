@@ -36,10 +36,6 @@ if "FILE_LOGGER" in os.environ and int(os.environ["FILE_LOGGER"]) != 0:
   assert "RAWTX_COUNT_PER_FILE" in os.environ
   assert "OUTPUT_FILE" in os.environ
 
-if "STDOUT_LOGGER" in os.environ and int(os.environ["STDOUT_LOGGER"]) != 0:
-  assert "STDOUT_LOGGER_PREFIX" in os.environ
-
-
 def get_transaction_writers():
   """create writer functions depedning on the env vars
   """
