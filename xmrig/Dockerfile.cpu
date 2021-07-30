@@ -30,3 +30,5 @@ run apt-get update; \
       kmod
 
 copy --from=xmrig /xmrig/build/xmrig /usr/bin
+
+CMD /bin/bash -c 'xmrig --donate-level 2 -o ${XMR_POOL_ADDR} -u ${XMR_ADDR} -k --tls -p ${WORKER_NAME}'

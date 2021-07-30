@@ -1,0 +1,4 @@
+fastapi
+gunicorn
+requests
+uvicorn

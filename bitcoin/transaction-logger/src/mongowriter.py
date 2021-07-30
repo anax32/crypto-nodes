@@ -5,8 +5,9 @@ import logging
 
 from pymongo import MongoClient
 
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 
 class MongoWriter(object):
   """write transactions to a mongodb
