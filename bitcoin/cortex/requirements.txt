@@ -1,4 +1,5 @@
+aiofiles
 fastapi
-gunicorn
+jinja2
 requests
 uvicorn

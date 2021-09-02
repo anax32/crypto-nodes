@@ -1,0 +1,31 @@
+<html>
+<head>
+<title>cortex</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+<script
+  src="https://code.jquery.com/jquery-3.1.1.min.js"
+  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+  crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+
+</head>
+
+<body>
+<div class="ui main text container">
+
+<img class="ui small image" src="/static/bitcoin-logo.png" alt="btc logo" />
+
+<div class="ui divider"></div>
+{% block path %}
+{% endblock %}
+<div class="ui divider"></div>
+
+{% block content %}
+{% endblock %}
+<div class="ui divider"></div>
+
+</div>
+
+</body>
+</html>

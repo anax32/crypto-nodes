@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block path %}
+<div class="ui breadcrumb">
+  <a class="section" href="/ui/">home</a>
+  <div class="divider"> / </div>
+  <a class="section" href="/ui/mempool/">mempool</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2 class="ui header">mempool</h2>
+
+<div class="ui relaxed divided list">
+{% for txid, info in mempool.items() %}
+
+  <div class="item">
+    <i class="small circle middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="/ui/{{ txid }}">{{ "%0.8f" % info.fees.base }}btc / {{ info.vsize }} vbytes</a>
+    </div>
+  </div>
+
+{% endfor %}
+</div>
+
+{% endblock %}

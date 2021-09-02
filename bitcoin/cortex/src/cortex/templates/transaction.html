@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block path %}
+<div class="ui breadcrumb">
+  <a class="section" href="/ui/">home</a>
+  <div class="divider"> / </div>
+  <a class="section" href="/ui/mempool">mempool</a>
+  <div class="divider"> / </div>
+  <div class="active section">{{ txid }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<h2 class="ui header">{{ txid }}</h2>
+
+<div class="ui list">
+  <div class="item">version: {{ tx.version }}</div>
+  <div class="item">size: {{ tx.size }}</div>
+  <div class="item">vsize: {{ tx.vsize }}</div>
+  <div class="item">weight: {{ tx.weight }}</div>
+  <div class="item">locktime: {{ tx.locktime }}</div>
+</div>
+
+<h3 class="ui header">inputs</h3>
+{% for vin in tx.vin %}
+  <div class="ui divider"></div>
+  <a href="/ui/{{ vin.txid }}">{{ vin.txid }}</a>
+  <div class="item">vout : {{ vin.vout }}</div>
+  <a href="/script/{{ vin.scriptSig.hex }}">script</a>
+{% endfor %}
+
+<h3 class="ui header">outputs</h3>
+{% for vout in tx.vout %}
+  <div class="ui divider"></div>
+  <span>value: {{ "%0.8fbtc" % vout.value }}</span>
+
+  <div class="ui list">
+  {% for addr in vout.scriptPubKey.addresses %}
+    <div class="item">{{ addr }}</div>
+  {% endfor %}
+  </div>
+{% endfor %}
+{% endblock %}

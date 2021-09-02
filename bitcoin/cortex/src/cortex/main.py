@@ -10,19 +10,14 @@ import logging
 
 
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from .bitcoindrpc import BitcoinRPC
 
+from .btc_routes import router as btc_router
+from .tx_ui import router as tx_ui_router
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # setup logging
 # FIXME: move to logging config file
@@ -36,6 +31,23 @@ handler.setFormatter(
 logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(os.getenv("LOG_LEVEL", "WARN"))
+
+
+app = FastAPI()
+app.include_router(btc_router)
+app.include_router(tx_ui_router)
+
+
+static_dir = os.path.join(os.path.dirname(__file__), "statics")
+app.mount("/static", StaticFiles(directory=static_dir), name="statics")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -55,44 +67,3 @@ def startup_init():
   app.state.logger = logger
 
   info = app.state.bnrpc("getrpcinfo")
-
-
-@app.get("/", tags=["blockchain"])
-def getblockchaininfo(request: Request):
-  request.app.state.logger.info("getblockchaininfo")
-  return request.app.state.bnrpc("getblockchaininfo")
-
-
-@app.get("/tip", tags=["blockchain"])
-def getbestblockhash(request: Request):
-  request.app.state.logger.info("getbestblockhash")
-  return request.app.state.bnrpc("getbestblockhash")
-
-
-@app.get("/block/{blockhash}", tags=["blockchain"])
-def getblock(blockhash: str, request: Request):
-  request.app.state.logger.info("getblock: '%s'", blockhash)
-  return request.app.state.bnrpc("getblock", blockhash, 1)
-
-
-@app.get("/tx/{txid}", tags=["transactions"])
-def getrawtransaction(txid: str, request: Request):
-  request.app.state.logger.info("getrawtransaction: '%s'", txid)
-  return request.app.state.bnrpc("getrawtransaction", txid, True)
-
-
-@app.get("/mempool", tags=["mempool"])
-def getrawmempool(request: Request):
-  request.app.state.logger.info("getrawmempool")
-  return request.app.state.bnrpc("getrawmempool", True)
-
-
-@app.get("/mempool/{txid}", tags=["mempool"])
-def get_mempool_entry(txid: str, request: Request):
-  request.app.state.logger.info("getmempoolentry: '%s'", txid)
-  return request.app.state.bnrpc("getmempoolentry", txid)
-
-
-@app.get("/node")
-def get_node_info():
-  pass
