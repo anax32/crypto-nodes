@@ -18,10 +18,25 @@ mkdir /config
 cat << EOF > /config/bitcoin.conf
 rpcuser=${rpc_username}
 rpcpassword=${rpc_password}
+rpcport=8332
 prune=550
 zmqpubhashblock=tcp://127.0.0.1:28832
 zmqpubhashtx=tcp://127.0.0.1:28832
 zmqpubrawtx=tcp://127.0.0.1:28832
+EOF
+
+cat << EOF > logger.env
+FILE_LOGGER=1
+RAWTX_SOURCE_ADDR=tcp://127.0.0.1:28832
+RAWTX_COUNT_PER_FILE=${tx_count}
+BITCOIND_RPC_USER=${rpc_username}
+BITCOIND_RPC_PASSWORD=${rpc_password}
+BITCOIND_HOST=127.0.0.1
+BITCOIND_PORT=8332
+AWS_BUCKET_NAME=${aws_bucket_name}
+AWS_FILE_PREFIX=${aws_prefix}
+FILENAME_STUB=txn
+LOG_LEVEL=INFO
 EOF
 
 # run the node container
@@ -36,31 +51,21 @@ docker run \
   --name btc-node \
   ${node_repository}:${node_tag}
 
-sleep 5
+sleep 15
 
 # setup the logging for the node container
-docker exec \
-  btc-node \
-  bitcoin-cli \
-    -rpcuser=${rpc_username} \
-    -rpcpassword=${rpc_password} \
-    logging "[\"all\"]" "[\"http\", \"bench\", \"tor\", \"qt\", \"leveldb\", \"net\", \"addrman\", \"selectcoins\", \"rand\", \"prune\", \"libevent\", \"walletdb\"]"
+#docker exec \
+#  btc-node \
+#  bitcoin-cli \
+#    -rpcuser=${rpc_username} \
+#    -rpcpassword=${rpc_password} \
+#    logging "[\"all\"]" "[\"http\", \"bench\", \"tor\", \"qt\", \"leveldb\", \"net\", \"addrman\", \"selectcoins\", \"rand\", \"prune\", \"libevent\", \"walletdb\"]"
 
 # run the log container
 docker run \
   -d \
   --rm \
-  -e FILE_LOGGER=1 \
-  -e RAWTX_SOURCE_ADDR="tcp://127.0.0.1:28832" \
-  -e RAWTX_COUNT_PER_FILE=${tx_count} \
-  -e RAWTX_COMPRESSED_LOGS=1 \
-  -e AWS_BUCKET_NAME=${aws_bucket_name} \
-  -e AWS_FILE_PREFIX=${aws_prefix} \
-  -e BITCOIND_RPC_USER=${rpc_username} \
-  -e BITCOIND_RPC_PASSWORD=${rpc_password} \
-  -e BITCOIND_HOST=127.0.0.1 \
-  -e BITCOIND_PORT=8332 \
-  -e LOG_LEVEL=DEBUG \
+  --env-file logger.env \
   --network=host \
   -v /tx-data:/data \
   --log-opt max-size=5m \

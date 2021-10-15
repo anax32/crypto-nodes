@@ -24,4 +24,4 @@ CMD ["bitcoind", "-datadir=/block-data", "-conf=/config/bitcoin.conf", "-zmqpubr
 
 # expose the port to peers
 EXPOSE 8332
-EXPOSE 23882
+EXPOSE 28832
