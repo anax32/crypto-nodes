@@ -90,23 +90,42 @@ def get_input_addresses(tx, rpc):
   """get list of input addresses to a transaction
 
      for this we have to do an rpc call to getrawtransaction to get the tx details
+
+     coinbase transactions are ignored
   """
   # get the input transactions
-  addr = [x for vin in tx["vin"] for v in rpc("getrawtransaction", vin["txid"])["vout"]
-            if v["n"] == vin["vout"]
-              for x in v["scriptPubKey"]["addresses"]
-         ]
-  return set(addr)
+  addr = set()
+
+  if "vin" in tx:
+    for vin in [i for i in tx["vin"] if "coinbase" not in i]:
+      rtx = rpc("getrawtransaction", vin["txid"])
+      itx = rpc("decoderawtransaction", rtx)
+
+      if "vout" not in itx:
+        continue
+
+      for v in [x for x in itx["vout"] if x["n"] == vin["vout"]]:
+        try:
+          for x in v["scriptPubKey"]["addresses"]:
+            addr.add(x)
+        except KeyError:
+          continue
+
+  return list(addr)
 
 
 def get_output_addresses(tx, rpc):
   """get list of output addresses to a transaction"""
-  addr = []
+  addr = set()
 
-  for v in tx["vout"]:
-    addr += set(v["scriptPubKey"]["addresses"])
+  if "vout" in tx:
+    for v in tx["vout"]:
+      try:
+        addr.update(set(v["scriptPubKey"]["addresses"]))
+      except KeyError:
+        continue
 
-  return set(addr)
+  return list(addr)
 
 
 def transaction_matrix(txs, rpc):

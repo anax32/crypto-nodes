@@ -1,3 +1,4 @@
+import os
 import logging
 import sys
 import json
@@ -21,8 +22,8 @@ def get_rpc():
   rpc = btctx.rpc.bitcoind.BitcoinRPC(
       os.environ["BITCOIND_RPC_USER"],
       os.environ["BITCOIND_RPC_PASSWORD"],
-      os.environ["BITCOIND_HOST"],
-      int(os.environ["BITCOIND_PORT"])
+      os.getenv("BITCOIND_HOST", "localhost"),
+      int(os.getenv("BITCOIND_PORT", 8332))
   )
 
   # check the availablity of the rpc server
@@ -42,16 +43,18 @@ if __name__ == "__main__":
   fname = sys.argv[1]
   logger.debug("reading from '%s'", fname)
 
+  print("input,output")
+
   with gzip.open(fname, "r") as f:
     for tx_t in f:
       tx = json.loads(tx_t)
       logger.debug("read '%s'", tx["txid"])
 
       s = {
-          tx["txid"]: {
-              "inputs": btctx.transaction.get_input_addresses(tx, rpc),
-              "outputs": btctx.transaction.get_output_addresses(tx, rpc)
-          }
+          "inputs": btctx.query.transaction.get_input_addresses(tx, rpc),
+          "outputs": btctx.query.transaction.get_output_addresses(tx, rpc)
       }
 
-      print(json.dumps(s))
+      # make a list of input/output pairs
+      for t in [",".join((i, o)) for o in s["inputs"] for i in s["outputs"]]:
+        print(t)

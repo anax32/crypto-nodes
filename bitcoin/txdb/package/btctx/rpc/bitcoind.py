@@ -34,8 +34,9 @@ class BitcoinRPC(object):
       logger.exception(e)
       return None
 
-    logger.debug("rpc returned: %i (%s)" % (resp.status_code, resp.text))
+    logger.debug("rpc returned: %i (%s...)" % (resp.status_code, resp.text[:20]))
     if resp.status_code == 200:
       return resp.json()["result"]
     else:
       logger.error("%i: %s" % (resp.status_code, resp.text))
+      return {}
