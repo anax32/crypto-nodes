@@ -1,0 +1,83 @@
+version: "3.9"
+
+#
+# fix the network subnet and btc-node ip to match values
+# in bitcoind.conf file for zmq, rpcbind and rpcallowip
+#
+networks:
+  btctx:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  btc-node:
+    image: anax32/bitcoind
+    networks:
+      btctx:
+        ipv4_address: 172.20.0.2
+    ports:
+      - 8332:8332
+      - 8333:8333
+      - 28832:28832
+    env_file:
+      - logger.env
+    volumes:
+      - /home/ed/data-disk/btc/data:/block-data
+      - /home/ed/data-disk/btc/config:/config
+    logging:
+      options:
+        max-file: "2"
+        max-size: "5m"
+
+  lnd:
+    image: lightninglabs/lnd:v0.12.0-beta
+    networks:
+      - btctx
+    command: >
+      "--bitcoin.active"
+      "--bitcoin.mainnet"
+      "--bitcoin.node=bitcoind"
+      "--bitcoind.rpchost=btc-node"
+      "--bitcoind.rpcuser=ed"
+      "--bitcoind.rpcpass=edpassword1"
+      "--bitcoind.zmqpubrawblock=tcp://btc-node:28833"
+      "--bitcoind.zmqpubrawtx=tcp://btc-node:28832"
+    depends_on:
+      - btc-node
+
+  minioserver:
+    image: anax32/storage
+    networks:
+      - btctx
+    ports:
+      - 9000:9000
+    env_file:
+      - logger.env
+    volumes:
+      - /home/ed/data-disk/btc/buckets:/data
+    command: /usr/bin/init-buckets.sh
+    logging:
+      options:
+        max-file: "2"
+        max-size: "5m"
+
+  btc-logger:
+    image: anax32/btc/logger
+    networks:
+      - btctx
+    env_file:
+      - logger.env
+    environment:
+      RAWTX_SOURCE_ADDR: "tcp://btc-node:28832"
+      BITCOIND_HOST: "btc-node"
+    volumes:
+      - /home/ed/data-disk/btc/txdata:/data
+    logging:
+      options:
+        max-file: "2"
+        max-size: "5m"
+    depends_on:
+      - btc-node
+      - minioserver

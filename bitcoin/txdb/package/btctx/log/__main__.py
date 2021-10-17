@@ -20,6 +20,9 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
+logging.getLogger("botocore").setLevel(logging.WARNING)
+
+
 """
 required environment variables
 """

@@ -71,13 +71,13 @@ class TextWriter(object):
 
     # write to the log
     self.tx_file.write((tx + "\n").encode())
-    self.tx_count += 1
 
     if self.__len__() % (self.max_tx_count/10) == 0:
       logger.info("tx %i/%i", self.__len__()%self.max_tx_count, self.max_tx_count)
     else:
       logger.debug("tx %i", self.__len__())
 
+    self.tx_count += 1
 
   def __del__(self):
     logger.info("final close after %i transactions", self.__len__())

@@ -35,6 +35,7 @@ docker run \
   --network=host \
   --log-opt max-size=5m \
   --log-opt max-file=5 \
+  -u $(id -u):$(id -g) \
   -v /home/ed/data-disk/btc/data:/block-data \
   -v /home/ed/data-disk/btc/config:/config \
   --name btc-node \
@@ -48,6 +49,7 @@ docker run \
   --network=host \
   --log-opt max-size=5m \
   --log-opt max-file=5 \
+  -u $(id -u):$(id -g) \
   -v /home/ed/data-disk/btc/buckets:/data \
   --name storage \
   anax32/storage \
@@ -61,6 +63,7 @@ docker run \
   --rm \
   --env-file logger.env \
   --network=host \
+  -u $(id -u):$(id -g) \
   -v /home/ed/data-disk/btc/txdata:/data \
   --log-opt max-size=5m \
   --log-opt max-file=5 \
