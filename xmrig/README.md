@@ -1,5 +1,27 @@
 # Monero mining with xmrig
 
+## usage
+
+```bash
+docker run \
+  -d \
+  --dns 8.8.8.8 \
+  --name xmrminer \
+  --privileged \
+  -v /lib/modules:/lib/modules \
+  -e XMR_POOL_ADDR=gulf.moneroocean.stream:20128 \
+  -e XMR_ADDR=4AJin9Rwi4KE93rgyPKnds569UeXKgxdW7G9vvKUQCKrPYzHQMQmGrFezLq5GuX3Pfjo1wkiHu3jmGRUhRRufjYPBQPtKaH \
+  -e WORKER_NAME=$(hostname) \
+  anax32/crn:xmr-latest
+```
+
+The host requires `msr-tools` and `kmod` are installed for the msr hashrate optimisations (this
+is achived in the docker run command with `-v /lib...` and `--privileged`).
+
+**NB**: I also set `--dns` resolved because my IP blocks `gulf.moneroocean.stream`
+
+## CUDA setup
+
 XMRig is a CUDA-enabled monero mining available at https://xmrig.com/
 
 This docker image builds the binary from source and includes
