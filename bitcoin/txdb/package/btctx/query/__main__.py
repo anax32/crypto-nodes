@@ -17,6 +17,9 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
 def get_rpc():
   # get the RPC object
   rpc = btctx.rpc.bitcoind.BitcoinRPC(
@@ -43,18 +46,25 @@ if __name__ == "__main__":
   fname = sys.argv[1]
   logger.debug("reading from '%s'", fname)
 
-  print("input,output")
+  ofname = sys.argv[2]
 
-  with gzip.open(fname, "r") as f:
-    for tx_t in f:
-      tx = json.loads(tx_t)
-      logger.debug("read '%s'", tx["txid"])
+  with gzip.open(ofname, "w") as w:
+    w.write("input,output\n".encode())
 
-      s = {
-          "inputs": btctx.query.transaction.get_input_addresses(tx, rpc),
-          "outputs": btctx.query.transaction.get_output_addresses(tx, rpc)
-      }
+    with gzip.open(fname, "r") as f:
+      for idx, tx_t in enumerate(f):
+        tx = json.loads(tx_t)
 
-      # make a list of input/output pairs
-      for t in [",".join((i, o)) for o in s["inputs"] for i in s["outputs"]]:
-        print(t)
+        s = {
+            "inputs": btctx.query.transaction.get_input_addresses(tx, rpc),
+            "outputs": btctx.query.transaction.get_output_addresses(tx, rpc)
+        }
+
+        logger.info("[%08i] '%s' [%i in, %i out]", idx, tx["txid"], len(s["inputs"]), len(s["outputs"]))
+
+        # make a list of input/output pairs
+        for t in [",".join((i, o)) for o in s["inputs"] for i in s["outputs"]]:
+          w.write(t.encode())
+          w.write("\n".encode())
+
+        w.flush()
