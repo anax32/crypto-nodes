@@ -1,3 +1,4 @@
+import json
 import logging
 
 
@@ -102,14 +103,18 @@ def get_input_addresses(tx, rpc):
       itx = rpc("decoderawtransaction", rtx)
 
       if "vout" not in itx:
+        logger.warning("no 'vout' in itx: '%s'", str(itx.keys()))
         continue
 
       for v in [x for x in itx["vout"] if x["n"] == vin["vout"]]:
-        try:
-          for x in v["scriptPubKey"]["addresses"]:
-            addr.add(x)
-        except KeyError:
-          continue
+        if "address" in v["scriptPubKey"]:
+          logger.debug("adding 1 vout address")
+          addr.add(v["scriptPubKey"]["address"])
+        elif "addresses" in v["scriptPubKey"]:
+          logger.debug("adding %i vout addresses", len(v["scriptPubKey"]["addresses"]))
+          addr += v["scriptPubKey"]["addresses"]
+        else:
+          logger.error("missing scriptPubKey.address in vout: '%s'", str(v))
 
   return list(addr)
 
