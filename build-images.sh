@@ -15,7 +15,7 @@ docker build -t anax32/crypto-nodes.ethereum:mine-latest -f eth/mine/Dockerfile 
 #
 # monero
 #
-docker build -t anax32/crypto-nodes.xmr:cpu-latest -f ./xmrig/Dockerfile.cpu  .
+docker build -t anax32/crypto-nodes.xmr:cpu-latest -f ./xmrig/Dockerfile  ./xmrig/
 
 #
 # monitoring

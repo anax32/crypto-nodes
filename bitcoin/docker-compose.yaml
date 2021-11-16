@@ -63,7 +63,27 @@ services:
         max-file: "2"
         max-size: "5m"
 
-  btc-logger:
+#  btc-logger:
+#    image: anax32/btc/logger
+#    networks:
+#      - btctx
+#    env_file:
+#      - logger.env
+#    environment:
+#      RAWTX_SOURCE_ADDR: "tcp://btc-node:28832"
+#      BITCOIND_HOST: "btc-node"
+#    volumes:
+#      - /home/ed/data-disk/btc/txdata:/data
+#    logging:
+#      options:
+#        max-file: "2"
+#        max-size: "5m"
+#    depends_on:
+#      - btc-node
+#      - minioserver
+
+
+  btc-confirm:
     image: anax32/btc/logger
     networks:
       - btctx
@@ -81,3 +101,4 @@ services:
     depends_on:
       - btc-node
       - minioserver
+    command: ["python3", "-m", "btctx.query", "/data/mempool-old.log.gz", "/data/addrs.gz"]
