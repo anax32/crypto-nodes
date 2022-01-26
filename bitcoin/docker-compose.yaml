@@ -31,6 +31,29 @@ services:
         max-file: "2"
         max-size: "5m"
 
+  btc-proxy:
+    image: nginx
+    networks:
+      btctx:
+        ipv4_address: 172.20.0.3
+    ports:
+      - 8331:8331
+    environment:
+      CORS_ALLOWED_HEADERS: Authorization,Accept,Origin,Keep-Alive,User-Agent,If-Modified-Since,Cache-Control,Content-Type
+      CORS_ALLOWED_METHODS: OPTIONS,GET,POST,PUT,HEAD
+      PROXY_PORT: 8331
+      PROXY_TARGET: http://btc-node:8332
+      PROXY_BASIC_AUTH_TOKEN: ZWQ6ZWRwYXNzd29yZDE=
+    logging:
+      options:
+        max-file: "2"
+        max-size: "5m"
+    volumes:
+      - /home/ed/data-disk/btc/proxy/templates/:/etc/nginx/templates:ro
+    depends_on:
+      - btc-node
+    command: [nginx-debug, '-g', 'daemon off;']
+
   lnd:
     image: lightninglabs/lnd:v0.12.0-beta
     networks:

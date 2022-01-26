@@ -23,6 +23,10 @@ prune=550
 zmqpubhashblock=tcp://127.0.0.1:28832
 zmqpubhashtx=tcp://127.0.0.1:28832
 zmqpubrawtx=tcp://127.0.0.1:28832
+
+minrelaytxfee=0
+blockmintxfee=0
+maxmempool=300
 EOF
 
 cat << EOF > logger.env
